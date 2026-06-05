@@ -45,3 +45,6 @@ next-env.d.ts
 # local agent/editor metadata
 AGENTS.md
 CLAUDE.md
+
+# Supabase local CLI cache
+supabase/.temp/
