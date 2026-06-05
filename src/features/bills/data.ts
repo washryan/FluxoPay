@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { syncOverdueStatuses } from "@/features/overdue/sync";
 
 export type Bill = {
   id: string;
@@ -39,6 +40,8 @@ function normalizeBill(row: BillQueryRow): Bill {
 }
 
 export async function getBills() {
+  await syncOverdueStatuses();
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("bills")

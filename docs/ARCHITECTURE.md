@@ -110,6 +110,8 @@ Fase 3: contas e cartoes
 - Geracao automatica de parcelas por fechamento e vencimento.
 - Faturas consolidadas por cartao e mes.
 - Pagamento de parcela ou fatura com criacao de transacao de saida.
+- Status automatico de vencidos para contas e parcelas.
+- Confirmacao no cliente antes de pagar, cancelar ou excluir.
 
 Fase 4: bot Telegram
 

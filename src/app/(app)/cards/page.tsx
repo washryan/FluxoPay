@@ -6,6 +6,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { ConfirmButton } from "@/components/confirm-button";
 import {
   createCreditCard,
   createCreditCardPurchase,
@@ -26,6 +27,7 @@ import { getCardPreset } from "@/features/cards/presets";
 import { CreditCardPurchaseForm } from "@/features/cards/purchase-form";
 import { billStatusLabels, billStatusStyles } from "@/features/bills/constants";
 import { getCategories } from "@/features/categories/data";
+import { syncOverdueStatuses } from "@/features/overdue/sync";
 import { formatCurrencyFromCents, formatDate } from "@/lib/formatters";
 
 type CardsPageProps = {
@@ -45,6 +47,8 @@ function formatInvoiceMonth(value: string) {
 }
 
 export default async function CardsPage({ searchParams }: CardsPageProps) {
+  await syncOverdueStatuses();
+
   const [
     params,
     cardsResult,
@@ -143,10 +147,13 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                       </div>
                       <form action={deleteCreditCard} className="mt-4">
                         <input name="id" type="hidden" value={card.id} />
-                        <button className="inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-white">
+                        <ConfirmButton
+                          className="inline-flex items-center gap-2 bg-white/95 text-slate-950 hover:bg-white"
+                          message={`Excluir o cartão ${card.name}? As compras e parcelas dele também serão removidas.`}
+                        >
                           <Trash2 className="size-3.5" />
                           Excluir
-                        </button>
+                        </ConfirmButton>
                       </form>
                     </div>
                   );
@@ -238,9 +245,12 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                     installment.status !== "cancelled" ? (
                       <form action={markInstallmentAsPaid}>
                         <input name="id" type="hidden" value={installment.id} />
-                        <button className="h-9 whitespace-nowrap rounded-full bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700">
+                        <ConfirmButton
+                          className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
+                          message={`Marcar a parcela de ${formatCurrencyFromCents(installment.amount_cents)} como paga?`}
+                        >
                           Marcar como paga
-                        </button>
+                        </ConfirmButton>
                       </form>
                     ) : null}
                   </div>
@@ -313,9 +323,13 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                             type="hidden"
                             value={invoice.invoice_month}
                           />
-                          <button className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+                          <ConfirmButton
+                            className="h-10 px-4 text-sm"
+                            message={`Pagar a fatura de ${invoice.card_name} no valor em aberto de ${formatCurrencyFromCents(invoice.open_cents)}?`}
+                            variant="dark"
+                          >
                             Pagar fatura
-                          </button>
+                          </ConfirmButton>
                         </form>
                       ) : null}
                     </div>
@@ -381,9 +395,13 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                         item.status !== "cancelled" ? (
                           <form action={markInstallmentAsPaid}>
                             <input name="id" type="hidden" value={item.id} />
-                            <button className="h-9 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                            <ConfirmButton
+                              className="h-9"
+                              message={`Pagar esta parcela de ${formatCurrencyFromCents(item.amount_cents)}?`}
+                              variant="emerald"
+                            >
                               Pagar parcela
-                            </button>
+                            </ConfirmButton>
                           </form>
                         ) : (
                           <span className="text-xs font-semibold text-slate-400 md:text-right">
@@ -446,10 +464,13 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
 
                     <form action={deleteCreditCardPurchase}>
                       <input name="id" type="hidden" value={purchase.id} />
-                      <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                      <ConfirmButton
+                        className="inline-flex items-center gap-2"
+                        message={`Excluir a compra "${purchase.description}"? As parcelas dela também serão removidas.`}
+                      >
                         <Trash2 className="size-3.5" />
                         Excluir
-                      </button>
+                      </ConfirmButton>
                     </form>
                   </div>
                 ))}

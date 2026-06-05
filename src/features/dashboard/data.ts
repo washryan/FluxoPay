@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { syncOverdueStatuses } from "@/features/overdue/sync";
 
 type TransactionRow = {
   type: "income" | "expense";
@@ -81,6 +82,8 @@ function getTrendMonths(referenceDate: Date) {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
+  await syncOverdueStatuses();
+
   const supabase = await createClient();
   const today = new Date();
   const currentMonthStart = startOfMonth(today);

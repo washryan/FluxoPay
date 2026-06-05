@@ -23,6 +23,8 @@ Implementado nesta etapa:
   fechamento e limite.
 - Faturas consolidadas por cartão/mês.
 - Ações para marcar parcela ou fatura como paga, criando transação de saída.
+- Status automático de contas/parcelas atrasadas ao carregar as telas.
+- Confirmação antes de pagar, cancelar ou excluir registros sensíveis.
 
 Ainda nao implementado:
 

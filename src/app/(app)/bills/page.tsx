@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 
+import { ConfirmButton } from "@/components/confirm-button";
 import { DeleteButton } from "@/components/delete-button";
 import { createBill, deleteBill, updateBillStatus } from "@/features/bills/actions";
 import {
@@ -144,16 +145,21 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
                         <form action={updateBillStatus}>
                           <input name="id" type="hidden" value={bill.id} />
                           <input name="status" type="hidden" value="paid" />
-                          <button className="whitespace-nowrap rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50">
+                          <ConfirmButton
+                            message={`Marcar "${bill.name}" como paga?`}
+                            variant="emerald"
+                          >
                             Pagar
-                          </button>
+                          </ConfirmButton>
                         </form>
                         <form action={updateBillStatus}>
                           <input name="id" type="hidden" value={bill.id} />
                           <input name="status" type="hidden" value="cancelled" />
-                          <button className="whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                          <ConfirmButton
+                            message={`Cancelar "${bill.name}"?`}
+                          >
                             Cancelar
-                          </button>
+                          </ConfirmButton>
                         </form>
                         <form action={deleteBill}>
                           <input name="id" type="hidden" value={bill.id} />
