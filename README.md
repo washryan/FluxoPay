@@ -8,7 +8,7 @@ em uma máquina local.
 
 ## Status
 
-Fase atual: Fase 3 funcional, preparando Fase 4.
+Fase atual: Fase 4 iniciada com bot Telegram.
 
 Implementado nesta etapa:
 
@@ -25,10 +25,13 @@ Implementado nesta etapa:
 - Ações para marcar parcela ou fatura como paga, criando transação de saída.
 - Status automático de contas/parcelas atrasadas ao carregar as telas.
 - Confirmação antes de pagar, cancelar ou excluir registros sensíveis.
+- Bot Telegram via long polling com vínculo seguro por token.
+- Comandos `/start`, `/vincular`, `/ajuda`, `/saldo` e `/resumo`.
+- Cadastro de entradas/saídas por linguagem natural com confirmação.
 
 Ainda nao implementado:
 
-- Bot Telegram e worker de lembretes.
+- Worker de lembretes.
 - Testes automatizados.
 
 ## Stack
@@ -56,6 +59,7 @@ supabase/
   config.toml            # Config local Supabase CLI
 docs/
   ARCHITECTURE.md        # Decisoes tecnicas e plano por fases
+  TELEGRAM_BOT.md        # Setup e operacao do bot local
 ```
 
 ## Setup local
@@ -153,6 +157,11 @@ Bot futuro (`.env.bot`):
 - `REMINDER_CRON`
 
 Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend ou na Vercel do site.
+
+## Bot Telegram
+
+O bot roda em uma maquina local 24h via long polling. Isso dispensa IP publico,
+webhook e servidor pago. Veja o setup completo em `docs/TELEGRAM_BOT.md`.
 
 ## Banco de dados
 

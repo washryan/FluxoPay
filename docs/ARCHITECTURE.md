@@ -115,10 +115,11 @@ Fase 3: contas e cartoes
 
 Fase 4: bot Telegram
 
-- `/start`, `/ajuda`, `/saldo`, `/resumo`.
-- Vinculo por token.
+- `/start`, `/vincular`, `/ajuda`, `/saldo`, `/resumo`.
+- Vinculo por token temporario salvo como hash.
 - Parser inicial por regras.
 - Confirmacao antes de salvar.
+- Long polling em maquina local 24h, sem IP publico.
 
 Fase 5: worker e acabamento de produto
 
