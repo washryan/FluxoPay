@@ -104,8 +104,8 @@ Fase 2: dominio financeiro web
 
 Fase 3: contas e cartoes
 
-- Contas a pagar/receber.
-- Cartoes de credito.
+- Contas a pagar/receber persistidas.
+- Cartoes de credito persistidos.
 - Compras parceladas.
 - Geracao de parcelas/faturas.
 

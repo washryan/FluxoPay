@@ -17,12 +17,13 @@ Implementado nesta etapa:
 - Cadastro, login, logout e rota protegida `/dashboard`.
 - Migration inicial com RLS para tabelas financeiras.
 - Estrutura de docs, env examples e configuracao local do Supabase.
+- Categorias e transacoes com CRUD/filtros.
+- Inicio da Fase 3 com contas futuras e cartoes persistidos no Supabase.
 
 Ainda nao implementado:
 
-- CRUD de transacoes, categorias, contas e cartoes.
+- Compras de cartao, parcelas e faturas.
 - Bot Telegram e worker de lembretes.
-- Graficos reais do dashboard.
 - Testes automatizados.
 
 ## Stack

@@ -1,65 +1,24 @@
-import { BadgeCheck, CalendarDays, CreditCard, Landmark, Plus } from "lucide-react";
+import { BadgeCheck, Landmark, Trash2 } from "lucide-react";
 
-const cardPresets = [
-  {
-    name: "Nubank",
-    shortName: "Nu",
-    closingDay: 20,
-    dueDay: 27,
-    gradient: "from-violet-700 via-fuchsia-600 to-purple-500",
-  },
-  {
-    name: "Caixa",
-    shortName: "CX",
-    closingDay: 18,
-    dueDay: 25,
-    gradient: "from-sky-700 via-blue-600 to-orange-400",
-  },
-  {
-    name: "Inter",
-    shortName: "IN",
-    closingDay: 10,
-    dueDay: 17,
-    gradient: "from-orange-600 via-orange-500 to-amber-300",
-  },
-  {
-    name: "Bradesco",
-    shortName: "BR",
-    closingDay: 12,
-    dueDay: 20,
-    gradient: "from-red-700 via-rose-600 to-pink-500",
-  },
-  {
-    name: "Itaú",
-    shortName: "IT",
-    closingDay: 8,
-    dueDay: 15,
-    gradient: "from-orange-700 via-blue-700 to-indigo-600",
-  },
-  {
-    name: "Santander",
-    shortName: "ST",
-    closingDay: 5,
-    dueDay: 12,
-    gradient: "from-red-700 via-red-500 to-orange-400",
-  },
-  {
-    name: "Banco do Brasil",
-    shortName: "BB",
-    closingDay: 14,
-    dueDay: 21,
-    gradient: "from-yellow-400 via-blue-600 to-blue-800",
-  },
-  {
-    name: "PicPay",
-    shortName: "PP",
-    closingDay: 22,
-    dueDay: 1,
-    gradient: "from-lime-500 via-green-500 to-emerald-700",
-  },
-];
+import { createCreditCard, deleteCreditCard } from "@/features/cards/actions";
+import { CustomCardForm } from "@/features/cards/card-form";
+import { getCreditCards } from "@/features/cards/data";
+import { cardPresets, getCardPreset } from "@/features/cards/presets";
+import { formatCurrencyFromCents } from "@/lib/formatters";
 
-export default function CardsPage() {
+type CardsPageProps = {
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
+  }>;
+};
+
+export default async function CardsPage({ searchParams }: CardsPageProps) {
+  const [params, cardsResult] = await Promise.all([
+    searchParams,
+    getCreditCards(),
+  ]);
+
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -71,11 +30,23 @@ export default function CardsPage() {
             Cadastre seus cartões principais.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-            Escolha um modelo conhecido para preencher rapidamente nome,
-            fechamento e vencimento. Na próxima etapa, isso será conectado ao
-            banco e às compras parceladas.
+            Escolha um modelo conhecido ou crie um cartão personalizado. Os
+            cartões já são salvos no Supabase e serão usados para compras
+            parceladas na próxima etapa.
           </p>
         </header>
+
+        {params.success ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {params.success}
+          </div>
+        ) : null}
+
+        {params.error ?? cardsResult.error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {params.error ?? "Não foi possível carregar cartões."}
+          </div>
+        ) : null}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {cardPresets.map((card) => (
@@ -97,100 +68,111 @@ export default function CardsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-white/85">
-                    <CalendarDays className="size-4" />
+                  <p className="text-sm text-white/85">
                     Fecha dia {card.closingDay} · vence dia {card.dueDay}
-                  </div>
-                  <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]">
-                    <Plus className="size-4" />
-                    Usar modelo
-                  </button>
+                  </p>
+                  <form action={createCreditCard}>
+                    <input name="name" type="hidden" value={card.name} />
+                    <input
+                      name="closing_day"
+                      type="hidden"
+                      value={card.closingDay}
+                    />
+                    <input name="due_day" type="hidden" value={card.dueDay} />
+                    <input name="limit" type="hidden" value="" />
+                    <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]">
+                      Usar modelo
+                    </button>
+                  </form>
                 </div>
               </div>
             </article>
           ))}
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <section className="grid gap-5 xl:grid-cols-[1fr_390px]">
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="rounded-2xl bg-slate-950 p-2 text-white">
-                <CreditCard className="size-5" />
-              </span>
-              <div>
-                <h2 className="text-lg font-semibold">Cartão personalizado</h2>
-                <p className="text-sm text-slate-500">
-                  Para bancos digitais, cooperativas ou cartões de loja.
-                </p>
-              </div>
-            </div>
+            <h2 className="text-lg font-semibold">Cartões cadastrados</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {cardsResult.cards.length} cartões salvos.
+            </p>
 
-            <form className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                Nome do cartão
-                <input
-                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                  placeholder="Ex: Cartão da família"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Fechamento
-                <input
-                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                  max={31}
-                  min={1}
-                  placeholder="Dia"
-                  type="number"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Vencimento
-                <input
-                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                  max={31}
-                  min={1}
-                  placeholder="Dia"
-                  type="number"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-                Limite opcional
-                <input
-                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                  inputMode="decimal"
-                  placeholder="Ex: 2500,00"
-                />
-              </label>
-              <button
-                className="h-11 w-fit rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white opacity-60"
-                disabled
-                type="button"
-              >
-                Salvar em breve
-              </button>
-            </form>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {cardsResult.cards.length > 0 ? (
+                cardsResult.cards.map((card) => {
+                  const preset = getCardPreset(card.name);
+
+                  return (
+                    <div
+                      className={`rounded-[1.5rem] border border-slate-200 p-4 ${
+                        preset
+                          ? `bg-gradient-to-br ${preset.gradient} text-white`
+                          : "bg-slate-950 text-white"
+                      }`}
+                      key={card.id}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm opacity-75">Cartão</p>
+                          <h3 className="mt-1 text-xl font-semibold">
+                            {card.name}
+                          </h3>
+                        </div>
+                        <div className="grid size-10 place-items-center rounded-2xl bg-white/18 text-xs font-black ring-1 ring-white/20">
+                          {preset?.shortName ?? card.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      </div>
+                      <div className="mt-6 grid gap-2 text-sm opacity-90">
+                        <p>
+                          Fecha dia {card.closing_day} · vence dia {card.due_day}
+                        </p>
+                        <p>
+                          Limite:{" "}
+                          {card.limit_cents
+                            ? formatCurrencyFromCents(card.limit_cents)
+                            : "não informado"}
+                        </p>
+                      </div>
+                      <form action={deleteCreditCard} className="mt-4">
+                        <input name="id" type="hidden" value={card.id} />
+                        <button className="inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-white">
+                          <Trash2 className="size-3.5" />
+                          Excluir
+                        </button>
+                      </form>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="grid min-h-52 place-items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500 md:col-span-2">
+                  Nenhum cartão cadastrado ainda.
+                </div>
+              )}
+            </div>
           </article>
 
-          <aside className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
-              <BadgeCheck className="size-5" />
-            </span>
-            <h2 className="mt-4 text-lg font-semibold">Próxima entrega</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              A Fase 3 vai salvar cartões no Supabase, gerar parcelas e montar a
-              lógica de faturas com fechamento e vencimento.
-            </p>
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-              <div className="flex items-center gap-2 font-semibold text-slate-900">
-                <Landmark className="size-4" />
-                Preparado para bancos comuns
-              </div>
-              <p className="mt-2">
-                Nubank, Caixa, Inter, Bradesco, Itaú, Santander, Banco do Brasil
-                e PicPay já aparecem como modelos visuais.
+          <div className="space-y-5">
+            <CustomCardForm />
+            <aside className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
+                <BadgeCheck className="size-5" />
+              </span>
+              <h2 className="mt-4 text-lg font-semibold">Próxima entrega</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                A próxima parte da Fase 3 conecta compras de cartão, parcelas e
+                faturas calculadas por fechamento e vencimento.
               </p>
-            </div>
-          </aside>
+              <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+                <div className="flex items-center gap-2 font-semibold text-slate-900">
+                  <Landmark className="size-4" />
+                  Persistência ativa
+                </div>
+                <p className="mt-2">
+                  Os cartões salvos já ficam isolados por usuário via RLS.
+                </p>
+              </div>
+            </aside>
+          </div>
         </section>
       </div>
     </div>
