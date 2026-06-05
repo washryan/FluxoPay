@@ -188,3 +188,179 @@ export async function getUpcomingInstallments() {
     error: null,
   };
 }
+
+export type CreditCardInvoiceItem = {
+  id: string;
+  purchase_id: string;
+  purchase_description: string;
+  installment_number: number;
+  installments_count: number;
+  amount_cents: number;
+  due_date: string;
+  status: "pending" | "paid" | "overdue" | "cancelled";
+  paid_transaction_id: string | null;
+  category_name: string | null;
+  category_color: string | null;
+};
+
+export type CreditCardInvoice = {
+  key: string;
+  card_id: string;
+  card_name: string;
+  invoice_month: string;
+  due_date: string;
+  total_cents: number;
+  open_cents: number;
+  paid_cents: number;
+  status: "pending" | "paid" | "overdue" | "cancelled";
+  items: CreditCardInvoiceItem[];
+};
+
+type InvoiceInstallmentRow = {
+  id: string;
+  purchase_id: string;
+  installment_number: number;
+  amount_cents: number;
+  due_date: string;
+  status: "pending" | "paid" | "overdue" | "cancelled";
+  paid_transaction_id: string | null;
+  credit_card_purchases:
+    | {
+        description: string;
+        installments_count: number;
+        credit_card_id: string;
+        categories:
+          | { name: string; color: string }
+          | { name: string; color: string }[]
+          | null;
+        credit_cards: { name: string } | { name: string }[] | null;
+      }
+    | {
+        description: string;
+        installments_count: number;
+        credit_card_id: string;
+        categories:
+          | { name: string; color: string }
+          | { name: string; color: string }[]
+          | null;
+        credit_cards: { name: string } | { name: string }[] | null;
+      }[]
+    | null;
+};
+
+function invoiceStatus(
+  items: CreditCardInvoiceItem[],
+): CreditCardInvoice["status"] {
+  if (items.length > 0 && items.every((item) => item.status === "paid")) {
+    return "paid";
+  }
+
+  if (items.some((item) => item.status === "overdue")) {
+    return "overdue";
+  }
+
+  if (items.length > 0 && items.every((item) => item.status === "cancelled")) {
+    return "cancelled";
+  }
+
+  return "pending";
+}
+
+export async function getCreditCardInvoices() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("installments")
+    .select(
+      `
+      id,
+      purchase_id,
+      installment_number,
+      amount_cents,
+      due_date,
+      status,
+      paid_transaction_id,
+      credit_card_purchases(
+        description,
+        installments_count,
+        credit_card_id,
+        categories(name, color),
+        credit_cards(name)
+      )
+      `,
+    )
+    .order("due_date", { ascending: false })
+    .limit(120);
+
+  if (error) {
+    return { error: error.message, invoices: [] as CreditCardInvoice[] };
+  }
+
+  const grouped = new Map<string, CreditCardInvoice>();
+  const rows = (data ?? []) as unknown as InvoiceInstallmentRow[];
+
+  for (const installment of rows) {
+    const purchase = firstRelation(installment.credit_card_purchases);
+
+    if (!purchase) {
+      continue;
+    }
+
+    const card = firstRelation(purchase.credit_cards);
+    const category = firstRelation(purchase.categories);
+    const invoiceMonth = installment.due_date.slice(0, 7);
+    const key = `${purchase.credit_card_id}:${invoiceMonth}`;
+    const current = grouped.get(key) ?? {
+      key,
+      card_id: purchase.credit_card_id,
+      card_name: card?.name ?? "Cartão",
+      invoice_month: invoiceMonth,
+      due_date: installment.due_date,
+      total_cents: 0,
+      open_cents: 0,
+      paid_cents: 0,
+      status: "pending" as const,
+      items: [],
+    };
+
+    const item: CreditCardInvoiceItem = {
+      id: installment.id,
+      purchase_id: installment.purchase_id,
+      purchase_description: purchase.description,
+      installment_number: installment.installment_number,
+      installments_count: purchase.installments_count,
+      amount_cents: installment.amount_cents,
+      due_date: installment.due_date,
+      status: installment.status,
+      paid_transaction_id: installment.paid_transaction_id,
+      category_name: category?.name ?? null,
+      category_color: category?.color ?? null,
+    };
+
+    current.items.push(item);
+    current.total_cents += item.amount_cents;
+
+    if (item.status === "paid") {
+      current.paid_cents += item.amount_cents;
+    }
+
+    if (item.status === "pending" || item.status === "overdue") {
+      current.open_cents += item.amount_cents;
+    }
+
+    if (item.due_date > current.due_date) {
+      current.due_date = item.due_date;
+    }
+
+    grouped.set(key, current);
+  }
+
+  const invoices = Array.from(grouped.values())
+    .map((invoice) => ({
+      ...invoice,
+      items: invoice.items.sort((a, b) => a.due_date.localeCompare(b.due_date)),
+      status: invoiceStatus(invoice.items),
+    }))
+    .sort((a, b) => b.invoice_month.localeCompare(a.invoice_month));
+
+  return { error: null, invoices };
+}

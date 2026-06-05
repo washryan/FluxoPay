@@ -108,7 +108,8 @@ Fase 3: contas e cartoes
 - Cartoes de credito persistidos.
 - Compras parceladas.
 - Geracao automatica de parcelas por fechamento e vencimento.
-- Proximo ajuste: tela consolidada de faturas por cartao e mes.
+- Faturas consolidadas por cartao e mes.
+- Pagamento de parcela ou fatura com criacao de transacao de saida.
 
 Fase 4: bot Telegram
 
@@ -122,6 +123,24 @@ Fase 5: worker e acabamento de produto
 - Lembretes diarios.
 - Relatorios semanal/mensal.
 - Empty states, loading states, toasts e prints no README.
+
+Fase 6: importacao bancaria
+
+- Importacao CSV/OFX.
+- Normalizacao de colunas e pre-visualizacao antes de salvar.
+- Deduplicacao basica de lancamentos.
+
+Fase 7: IA e classificacao automatica
+
+- Sugestao de categoria por historico.
+- Classificacao assistida, sempre com revisao do usuario no MVP.
+
+Fase 8: Open Finance ou agregador
+
+- Avaliar Pluggy, Belvo, Celcoin ou alternativa conforme custo, cobertura e
+  friccao regulatoria.
+- Implementar somente se agregar valor real ao produto e couber no modelo de
+  monetizacao.
 
 ## Riscos e limitacoes do plano gratuito
 

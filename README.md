@@ -8,7 +8,7 @@ em uma máquina local.
 
 ## Status
 
-Fase atual: Fase 3 em andamento avançado.
+Fase atual: Fase 3 funcional, preparando Fase 4.
 
 Implementado nesta etapa:
 
@@ -21,10 +21,11 @@ Implementado nesta etapa:
 - Contas futuras, cartões, compras parceladas e parcelas persistidas no Supabase.
 - Modal para configurar cartões pré-definidos antes de salvar vencimento,
   fechamento e limite.
+- Faturas consolidadas por cartão/mês.
+- Ações para marcar parcela ou fatura como paga, criando transação de saída.
 
 Ainda nao implementado:
 
-- Tela consolidada de fatura fechada por cartão.
 - Bot Telegram e worker de lembretes.
 - Testes automatizados.
 
@@ -189,13 +190,13 @@ O plano para e-mails esta documentado em `docs/SUPABASE_EMAIL.md`.
 1. CRUD de categorias e transacoes com validacao Zod.
 2. Dashboard com resumo mensal e graficos Recharts.
 3. Contas a pagar/receber e status automatico.
-4. Cartões, compras parceladas e geração lógica de parcelas.
-5. Bot Telegram com vinculacao segura e confirmacao antes de salvar.
-6. Worker local de lembretes e relatorios.
-7. Importacao CSV/OFX.
-8. IA para classificacao automatica.
-9. Metas, orcamentos e compartilhamento familiar.
-10. Exportacao PDF/Excel e PWA.
+4. Bot Telegram com vinculação segura e confirmação antes de salvar.
+5. Worker local de lembretes e relatórios.
+6. Importação CSV/OFX.
+7. IA para classificação automática.
+8. Open Finance ou agregador externo, se fizer sentido no custo/benefício.
+9. Metas, orçamentos e compartilhamento familiar.
+10. Exportação PDF/Excel e PWA.
 
 ## Capturas futuras
 

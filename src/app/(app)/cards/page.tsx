@@ -1,13 +1,22 @@
-import { BadgeCheck, Landmark, ReceiptText, Trash2 } from "lucide-react";
+import {
+  BadgeCheck,
+  CalendarCheck2,
+  Landmark,
+  ReceiptText,
+  Trash2,
+} from "lucide-react";
 
 import {
   createCreditCard,
   createCreditCardPurchase,
   deleteCreditCard,
   deleteCreditCardPurchase,
+  markInstallmentAsPaid,
+  markInvoiceAsPaid,
 } from "@/features/cards/actions";
 import { CustomCardForm } from "@/features/cards/card-form";
 import {
+  getCreditCardInvoices,
   getCreditCardPurchases,
   getCreditCards,
   getUpcomingInstallments,
@@ -26,6 +35,15 @@ type CardsPageProps = {
   }>;
 };
 
+function formatInvoiceMonth(value: string) {
+  const [year, month] = value.split("-").map(Number);
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
 export default async function CardsPage({ searchParams }: CardsPageProps) {
   const [
     params,
@@ -33,19 +51,22 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
     categoriesResult,
     purchasesResult,
     installmentsResult,
+    invoicesResult,
   ] = await Promise.all([
     searchParams,
     getCreditCards(),
     getCategories(),
     getCreditCardPurchases(),
     getUpcomingInstallments(),
+    getCreditCardInvoices(),
   ]);
   const pageError =
     params.error ??
     cardsResult.error ??
     categoriesResult.error ??
     purchasesResult.error ??
-    installmentsResult.error;
+    installmentsResult.error ??
+    invoicesResult.error;
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -187,7 +208,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               {installmentsResult.installments.length > 0 ? (
                 installmentsResult.installments.map((installment) => (
                   <div
-                    className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto] md:items-center"
+                    className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto_auto] md:items-center"
                     key={installment.id}
                   >
                     <div>
@@ -213,6 +234,15 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                     <strong className="text-lg text-slate-950">
                       {formatCurrencyFromCents(installment.amount_cents)}
                     </strong>
+                    {installment.status !== "paid" &&
+                    installment.status !== "cancelled" ? (
+                      <form action={markInstallmentAsPaid}>
+                        <input name="id" type="hidden" value={installment.id} />
+                        <button className="h-9 whitespace-nowrap rounded-full bg-emerald-600 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700">
+                          Marcar como paga
+                        </button>
+                      </form>
+                    ) : null}
                   </div>
                 ))
               ) : (
@@ -222,6 +252,156 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               )}
             </div>
           </article>
+        </section>
+
+        <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Faturas consolidadas</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Agrupadas por cartão e mês de vencimento, com ações de pagamento.
+              </p>
+            </div>
+            <CalendarCheck2 className="size-5 text-emerald-600" />
+          </div>
+
+          <div className="mt-5 grid gap-4">
+            {invoicesResult.invoices.length > 0 ? (
+              invoicesResult.invoices.map((invoice) => (
+                <article
+                  className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50"
+                  key={invoice.key}
+                >
+                  <div className="grid gap-4 bg-white p-4 md:grid-cols-[1fr_auto] md:items-start">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xl font-semibold text-slate-950">
+                          {invoice.card_name}
+                        </h3>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                            billStatusStyles[invoice.status]
+                          }`}
+                        >
+                          {billStatusLabels[invoice.status]}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {formatInvoiceMonth(invoice.invoice_month)} · vencimento{" "}
+                        {formatDate(invoice.due_date)}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 text-left md:text-right">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          Em aberto
+                        </p>
+                        <p className="text-2xl font-semibold text-slate-950">
+                          {formatCurrencyFromCents(invoice.open_cents)}
+                        </p>
+                      </div>
+                      {invoice.open_cents > 0 ? (
+                        <form action={markInvoiceAsPaid}>
+                          <input
+                            name="card_id"
+                            type="hidden"
+                            value={invoice.card_id}
+                          />
+                          <input
+                            name="invoice_month"
+                            type="hidden"
+                            value={invoice.invoice_month}
+                          />
+                          <button className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+                            Pagar fatura
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-3">
+                    <div className="rounded-2xl bg-white p-3">
+                      <p className="text-xs text-slate-500">Total da fatura</p>
+                      <p className="mt-1 font-semibold text-slate-950">
+                        {formatCurrencyFromCents(invoice.total_cents)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white p-3">
+                      <p className="text-xs text-slate-500">Pago</p>
+                      <p className="mt-1 font-semibold text-emerald-700">
+                        {formatCurrencyFromCents(invoice.paid_cents)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white p-3">
+                      <p className="text-xs text-slate-500">Itens</p>
+                      <p className="mt-1 font-semibold text-slate-950">
+                        {invoice.items.length} parcelas
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-slate-200 border-t border-slate-200 bg-white">
+                    {invoice.items.map((item) => (
+                      <div
+                        className="grid gap-3 p-4 md:grid-cols-[1fr_auto_auto] md:items-center"
+                        key={item.id}
+                      >
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-semibold text-slate-950">
+                              {item.purchase_description}
+                            </h4>
+                            {item.category_name ? (
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                {item.category_name}
+                              </span>
+                            ) : null}
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                billStatusStyles[item.status]
+                              }`}
+                            >
+                              {billStatusLabels[item.status]}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Parcela {item.installment_number}/
+                            {item.installments_count} · vence{" "}
+                            {formatDate(item.due_date)}
+                          </p>
+                        </div>
+
+                        <strong className="text-lg text-slate-950">
+                          {formatCurrencyFromCents(item.amount_cents)}
+                        </strong>
+
+                        {item.status !== "paid" &&
+                        item.status !== "cancelled" ? (
+                          <form action={markInstallmentAsPaid}>
+                            <input name="id" type="hidden" value={item.id} />
+                            <button className="h-9 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                              Pagar parcela
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-400 md:text-right">
+                            Sem ação
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="grid min-h-44 place-items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                Nenhuma fatura gerada ainda. Lance uma compra parcelada para ver
+                a consolidação por cartão e mês.
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
