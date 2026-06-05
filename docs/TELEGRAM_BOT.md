@@ -18,15 +18,19 @@ processo. O vinculo real fica em `telegram_links`.
 
 ## Setup na maquina 24h
 
+Voce pode usar o repositorio inteiro ou copiar somente a pasta `bot/` para a
+maquina 24h. Para operacao do bot, a pasta `bot/` ja e suficiente.
+
 1. Instale Node.js LTS.
-2. Clone o repositorio.
+2. Copie a pasta `bot/` para a maquina ou clone o repositorio.
 3. Rode:
 
 ```bash
+cd bot
 npm install
 ```
 
-4. Crie `.env.bot` a partir de `.env.bot.example`.
+4. Crie `.env.bot` a partir de `bot/.env.bot.example`.
 5. Preencha:
 
 ```txt
@@ -37,6 +41,13 @@ BOT_TIMEZONE="America/Sao_Paulo"
 ```
 
 6. Inicie:
+
+```bash
+npm run start
+```
+
+Se estiver usando o repositorio inteiro e estiver na raiz do projeto, tambem
+pode usar:
 
 ```bash
 npm run bot

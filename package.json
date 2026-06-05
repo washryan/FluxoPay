@@ -7,16 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "bot": "tsx bot/src/index.ts",
-    "bot:dev": "tsx watch bot/src/index.ts"
+    "bot": "npm --prefix bot run start",
+    "bot:dev": "npm --prefix bot run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "clsx": "^2.1.1",
-    "dotenv": "^17.4.2",
-    "grammy": "^1.43.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
     "react": "19.2.4",
@@ -34,7 +32,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
-    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

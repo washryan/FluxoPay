@@ -161,7 +161,9 @@ Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend ou na Vercel do site.
 ## Bot Telegram
 
 O bot roda em uma maquina local 24h via long polling. Isso dispensa IP publico,
-webhook e servidor pago. Veja o setup completo em `docs/TELEGRAM_BOT.md`.
+webhook e servidor pago. Para a maquina 24h, voce pode copiar apenas a pasta
+`bot/`, instalar dependencias nela e rodar `npm run start`. Veja o setup
+completo em `docs/TELEGRAM_BOT.md`.
 
 ## Banco de dados
 
