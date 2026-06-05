@@ -1,10 +1,23 @@
-import { BadgeCheck, Landmark, Trash2 } from "lucide-react";
+import { BadgeCheck, Landmark, ReceiptText, Trash2 } from "lucide-react";
 
-import { createCreditCard, deleteCreditCard } from "@/features/cards/actions";
+import {
+  createCreditCard,
+  createCreditCardPurchase,
+  deleteCreditCard,
+  deleteCreditCardPurchase,
+} from "@/features/cards/actions";
 import { CustomCardForm } from "@/features/cards/card-form";
-import { getCreditCards } from "@/features/cards/data";
-import { cardPresets, getCardPreset } from "@/features/cards/presets";
-import { formatCurrencyFromCents } from "@/lib/formatters";
+import {
+  getCreditCardPurchases,
+  getCreditCards,
+  getUpcomingInstallments,
+} from "@/features/cards/data";
+import { PresetCardPicker } from "@/features/cards/preset-card-picker";
+import { getCardPreset } from "@/features/cards/presets";
+import { CreditCardPurchaseForm } from "@/features/cards/purchase-form";
+import { billStatusLabels, billStatusStyles } from "@/features/bills/constants";
+import { getCategories } from "@/features/categories/data";
+import { formatCurrencyFromCents, formatDate } from "@/lib/formatters";
 
 type CardsPageProps = {
   searchParams: Promise<{
@@ -14,10 +27,25 @@ type CardsPageProps = {
 };
 
 export default async function CardsPage({ searchParams }: CardsPageProps) {
-  const [params, cardsResult] = await Promise.all([
+  const [
+    params,
+    cardsResult,
+    categoriesResult,
+    purchasesResult,
+    installmentsResult,
+  ] = await Promise.all([
     searchParams,
     getCreditCards(),
+    getCategories(),
+    getCreditCardPurchases(),
+    getUpcomingInstallments(),
   ]);
+  const pageError =
+    params.error ??
+    cardsResult.error ??
+    categoriesResult.error ??
+    purchasesResult.error ??
+    installmentsResult.error;
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -30,9 +58,8 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
             Cadastre seus cartões principais.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-            Escolha um modelo conhecido ou crie um cartão personalizado. Os
-            cartões já são salvos no Supabase e serão usados para compras
-            parceladas na próxima etapa.
+            Escolha um modelo conhecido, configure datas reais de fatura e
+            registre compras parceladas com geração automática de parcelas.
           </p>
         </header>
 
@@ -42,53 +69,13 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
           </div>
         ) : null}
 
-        {params.error ?? cardsResult.error ? (
+        {pageError ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {params.error ?? "Não foi possível carregar cartões."}
+            {pageError}
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {cardPresets.map((card) => (
-            <article
-              className={`interactive-card card-sheen animate-rise rounded-[1.75rem] bg-gradient-to-br ${card.gradient} p-5 text-white shadow-xl shadow-slate-950/10`}
-              key={card.name}
-            >
-              <div className="relative z-10 flex min-h-44 flex-col justify-between">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-white/75">Modelo padrão</p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-                      {card.name}
-                    </h2>
-                  </div>
-                  <div className="grid size-12 place-items-center rounded-2xl bg-white/18 text-sm font-black tracking-tight ring-1 ring-white/20">
-                    {card.shortName}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm text-white/85">
-                    Fecha dia {card.closingDay} · vence dia {card.dueDay}
-                  </p>
-                  <form action={createCreditCard}>
-                    <input name="name" type="hidden" value={card.name} />
-                    <input
-                      name="closing_day"
-                      type="hidden"
-                      value={card.closingDay}
-                    />
-                    <input name="due_day" type="hidden" value={card.dueDay} />
-                    <input name="limit" type="hidden" value="" />
-                    <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]">
-                      Usar modelo
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </article>
-          ))}
-        </section>
+        <PresetCardPicker action={createCreditCard} />
 
         <section className="grid gap-5 xl:grid-cols-[1fr_390px]">
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
@@ -157,21 +144,141 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
                 <BadgeCheck className="size-5" />
               </span>
-              <h2 className="mt-4 text-lg font-semibold">Próxima entrega</h2>
+              <h2 className="mt-4 text-lg font-semibold">Persistência ativa</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                A próxima parte da Fase 3 conecta compras de cartão, parcelas e
-                faturas calculadas por fechamento e vencimento.
+                Cartões, compras e parcelas ficam isolados por usuário via RLS.
+                O cadastro usa centavos para evitar erro de ponto flutuante.
               </p>
               <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
                 <div className="flex items-center gap-2 font-semibold text-slate-900">
                   <Landmark className="size-4" />
-                  Persistência ativa
+                  Plano gratuito
                 </div>
                 <p className="mt-2">
-                  Os cartões salvos já ficam isolados por usuário via RLS.
+                  Para 3 pessoas, estes registros ocupam pouquíssimo espaço no
+                  Supabase.
                 </p>
               </div>
             </aside>
+          </div>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[430px_1fr]">
+          <CreditCardPurchaseForm
+            action={createCreditCardPurchase}
+            cards={cardsResult.cards}
+            categories={categoriesResult.categories}
+          />
+
+          <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Próximas parcelas</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Parcelas pendentes ordenadas pelo vencimento.
+                </p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {installmentsResult.installments.length} próximas
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {installmentsResult.installments.length > 0 ? (
+                installmentsResult.installments.map((installment) => (
+                  <div
+                    className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto] md:items-center"
+                    key={installment.id}
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-slate-950">
+                          {installment.purchase_description}
+                        </h3>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                            billStatusStyles[installment.status]
+                          }`}
+                        >
+                          {billStatusLabels[installment.status]}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {installment.card_name} · parcela{" "}
+                        {installment.installment_number}/
+                        {installment.installments_count} · vence{" "}
+                        {formatDate(installment.due_date)}
+                      </p>
+                    </div>
+                    <strong className="text-lg text-slate-950">
+                      {formatCurrencyFromCents(installment.amount_cents)}
+                    </strong>
+                  </div>
+                ))
+              ) : (
+                <div className="grid min-h-44 place-items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  Nenhuma parcela pendente por enquanto.
+                </div>
+              )}
+            </div>
+          </article>
+        </section>
+
+        <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Compras recentes</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Últimas compras lançadas em cartões de crédito.
+              </p>
+            </div>
+            <ReceiptText className="size-5 text-slate-400" />
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-3xl border border-slate-200">
+            {purchasesResult.purchases.length > 0 ? (
+              <div className="divide-y divide-slate-200">
+                {purchasesResult.purchases.map((purchase) => (
+                  <div
+                    className="grid gap-3 bg-white p-4 transition hover:bg-slate-50 md:grid-cols-[1fr_auto_auto] md:items-center"
+                    key={purchase.id}
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-slate-950">
+                          {purchase.description}
+                        </h3>
+                        {purchase.category_name ? (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                            {purchase.category_name}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {purchase.card_name} · {purchase.installments_count}x ·{" "}
+                        {formatDate(purchase.purchase_date)}
+                      </p>
+                    </div>
+
+                    <strong className="text-lg text-slate-950">
+                      {formatCurrencyFromCents(purchase.total_amount_cents)}
+                    </strong>
+
+                    <form action={deleteCreditCardPurchase}>
+                      <input name="id" type="hidden" value={purchase.id} />
+                      <button className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                        <Trash2 className="size-3.5" />
+                        Excluir
+                      </button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid min-h-44 place-items-center bg-slate-50 p-6 text-center text-sm text-slate-500">
+                Nenhuma compra no cartão registrada ainda.
+              </div>
+            )}
           </div>
         </section>
       </div>

@@ -107,7 +107,8 @@ Fase 3: contas e cartoes
 - Contas a pagar/receber persistidas.
 - Cartoes de credito persistidos.
 - Compras parceladas.
-- Geracao de parcelas/faturas.
+- Geracao automatica de parcelas por fechamento e vencimento.
+- Proximo ajuste: tela consolidada de faturas por cartao e mes.
 
 Fase 4: bot Telegram
 

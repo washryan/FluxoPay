@@ -1,14 +1,14 @@
 # FluxoPay
 
-FluxoPay e um SaaS real de financas pessoais, gratuito no inicio e preparado
-para evoluir para assinaturas no futuro. O objetivo e oferecer um produto
-confiavel para uso diario: usuarios com ambiente isolado, Supabase Auth,
+FluxoPay é um SaaS real de finanças pessoais, gratuito no início e preparado
+para evoluir para assinaturas no futuro. O objetivo é oferecer um produto
+confiável para uso diário: usuários com ambiente isolado, Supabase Auth,
 Postgres com RLS, dashboard financeiro e bot Telegram rodando via long polling
-em uma maquina local.
+em uma máquina local.
 
 ## Status
 
-Fase atual: fundacao segura do produto.
+Fase atual: Fase 3 em andamento avançado.
 
 Implementado nesta etapa:
 
@@ -18,11 +18,13 @@ Implementado nesta etapa:
 - Migration inicial com RLS para tabelas financeiras.
 - Estrutura de docs, env examples e configuracao local do Supabase.
 - Categorias e transacoes com CRUD/filtros.
-- Inicio da Fase 3 com contas futuras e cartoes persistidos no Supabase.
+- Contas futuras, cartões, compras parceladas e parcelas persistidas no Supabase.
+- Modal para configurar cartões pré-definidos antes de salvar vencimento,
+  fechamento e limite.
 
 Ainda nao implementado:
 
-- Compras de cartao, parcelas e faturas.
+- Tela consolidada de fatura fechada por cartão.
 - Bot Telegram e worker de lembretes.
 - Testes automatizados.
 
@@ -187,7 +189,7 @@ O plano para e-mails esta documentado em `docs/SUPABASE_EMAIL.md`.
 1. CRUD de categorias e transacoes com validacao Zod.
 2. Dashboard com resumo mensal e graficos Recharts.
 3. Contas a pagar/receber e status automatico.
-4. Cartoes, compras parceladas e geracao logica de parcelas.
+4. Cartões, compras parceladas e geração lógica de parcelas.
 5. Bot Telegram com vinculacao segura e confirmacao antes de salvar.
 6. Worker local de lembretes e relatorios.
 7. Importacao CSV/OFX.
