@@ -48,6 +48,42 @@ const expenseWords = [
   "conta",
 ];
 
+const descriptionStopWords = [
+  "gastei",
+  "paguei",
+  "comprei",
+  "recebi",
+  "ganhei",
+  "caiu",
+  "hoje",
+  "ontem",
+  "amanha",
+  "amanhã",
+  "reais",
+  "real",
+  "no",
+  "na",
+  "nos",
+  "nas",
+  "em",
+  "de",
+  "do",
+  "da",
+  "dos",
+  "das",
+  "com",
+  "por",
+  "via",
+  "pix",
+  "dinheiro",
+  "debito",
+  "débito",
+  "credito",
+  "crédito",
+  "cartao",
+  "cartão",
+];
+
 function detectType(message: string) {
   const normalized = normalizeText(message);
   const hasIncome = incomeWords.some((word) =>
@@ -105,13 +141,32 @@ function extractAmount(message: string) {
   return parseCurrencyToCents(match[1]);
 }
 
-function buildDescription(message: string) {
-  return message
+function titleCaseDescription(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildDescription(message: string, category?: Category | null) {
+  const cleaned = message
     .replace(/(?:r\$\s*)?\d+(?:[.,]\d{1,2})?/i, "")
-    .replace(/\b(hoje|ontem|amanha|amanhã|reais|real|no|na|de|do|da)\b/gi, "")
+    .replace(/\b\d+\s*x\b/gi, "")
+    .split(/\s+/)
+    .filter((word) => {
+      const normalized = normalizeText(word.replace(/[^\p{L}\p{N}-]/gu, ""));
+      return normalized && !descriptionStopWords.includes(normalized);
+    })
+    .join(" ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 180);
+    .trim();
+
+  if (cleaned) {
+    return titleCaseDescription(cleaned).slice(0, 180);
+  }
+
+  return category?.name ?? "Movimentação pelo Telegram";
 }
 
 async function findCategory(userId: string, message: string, type: string) {
@@ -144,7 +199,7 @@ export async function parseFinancialMessage(userId: string, message: string) {
 
   const type = detectType(sanitized);
   const category = await findCategory(userId, sanitized, type);
-  const description = buildDescription(sanitized) || sanitized.slice(0, 180);
+  const description = buildDescription(sanitized, category);
 
   return {
     error: null,
