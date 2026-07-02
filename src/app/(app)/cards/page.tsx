@@ -1,6 +1,8 @@
-import { BadgeCheck, CalendarCheck2, ReceiptText, Trash2 } from "lucide-react";
+import { BadgeCheck, CalendarCheck2, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 import { ConfirmButton } from "@/components/confirm-button";
+import { SubmitButton } from "@/components/submit-button";
 import {
   createCreditCard,
   createCreditCardPurchase,
@@ -10,11 +12,11 @@ import {
   markInvoiceAsPaid,
   moveInstallmentInvoice,
   revokeInvoicePayment,
+  updateCreditCard,
 } from "@/features/cards/actions";
 import { CustomCardForm } from "@/features/cards/card-form";
 import {
   getCreditCardInvoices,
-  getCreditCardPurchases,
   getCreditCards,
   getUpcomingInstallments,
 } from "@/features/cards/data";
@@ -31,6 +33,8 @@ type CardsPageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
+    invoiceStatus?: string;
+    q?: string;
   }>;
 };
 
@@ -43,6 +47,27 @@ function formatInvoiceMonth(value: string) {
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
+function filterHref({
+  invoiceStatus,
+  q,
+}: {
+  invoiceStatus?: string;
+  q?: string;
+}) {
+  const query = new URLSearchParams();
+
+  if (invoiceStatus && invoiceStatus !== "all") {
+    query.set("invoiceStatus", invoiceStatus);
+  }
+
+  if (q) {
+    query.set("q", q);
+  }
+
+  const value = query.toString();
+  return value ? `/cards?${value}` : "/cards";
+}
+
 export default async function CardsPage({ searchParams }: CardsPageProps) {
   await syncOverdueStatuses();
 
@@ -50,22 +75,60 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
     params,
     cardsResult,
     categoriesResult,
-    purchasesResult,
     installmentsResult,
     invoicesResult,
   ] = await Promise.all([
     searchParams,
     getCreditCards(),
     getCategories(),
-    getCreditCardPurchases(),
     getUpcomingInstallments(),
     getCreditCardInvoices(),
   ]);
+  const activeInvoiceStatus =
+    params.invoiceStatus === "paid" ||
+    params.invoiceStatus === "open" ||
+    params.invoiceStatus === "overdue"
+      ? params.invoiceStatus
+      : "all";
+  const invoiceSearch = (params.q ?? "").trim();
+  const normalizedInvoiceSearch = invoiceSearch
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const filteredInvoices = invoicesResult.invoices.filter((invoice) => {
+    if (activeInvoiceStatus === "paid" && invoice.status !== "paid") {
+      return false;
+    }
+
+    if (activeInvoiceStatus === "open" && invoice.status !== "pending") {
+      return false;
+    }
+
+    if (activeInvoiceStatus === "overdue" && invoice.status !== "overdue") {
+      return false;
+    }
+
+    if (!normalizedInvoiceSearch) {
+      return true;
+    }
+
+    const searchable = [
+      invoice.card_name,
+      invoice.invoice_month,
+      ...invoice.items.map((item) => item.purchase_description),
+      ...invoice.items.map((item) => item.category_name ?? ""),
+    ]
+      .join(" ")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    return searchable.includes(normalizedInvoiceSearch);
+  });
   const pageError =
     params.error ??
     cardsResult.error ??
     categoriesResult.error ??
-    purchasesResult.error ??
     installmentsResult.error ??
     invoicesResult.error;
 
@@ -167,6 +230,74 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                           />
                         </div>
                       ) : null}
+                      <details className="mt-4 rounded-2xl bg-white/12 p-3 text-sm ring-1 ring-white/15">
+                        <summary className="cursor-pointer font-semibold">
+                          Editar cartão
+                        </summary>
+                        <form
+                          action={updateCreditCard}
+                          className="mt-3 grid gap-3 text-slate-950"
+                        >
+                          <input name="id" type="hidden" value={card.id} />
+                          <label className="grid gap-1 text-xs font-semibold text-white/85">
+                            Nome
+                            <input
+                              className="h-10 rounded-2xl border border-white/20 bg-white px-3 text-sm text-slate-950 outline-none"
+                              name="name"
+                              required
+                              defaultValue={card.name}
+                            />
+                          </label>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="grid gap-1 text-xs font-semibold text-white/85">
+                              Fechamento
+                              <input
+                                className="h-10 rounded-2xl border border-white/20 bg-white px-3 text-sm text-slate-950 outline-none"
+                                max={31}
+                                min={1}
+                                name="closing_day"
+                                required
+                                type="number"
+                                defaultValue={card.closing_day}
+                              />
+                            </label>
+                            <label className="grid gap-1 text-xs font-semibold text-white/85">
+                              Vencimento
+                              <input
+                                className="h-10 rounded-2xl border border-white/20 bg-white px-3 text-sm text-slate-950 outline-none"
+                                max={31}
+                                min={1}
+                                name="due_day"
+                                required
+                                type="number"
+                                defaultValue={card.due_day}
+                              />
+                            </label>
+                          </div>
+                          <label className="grid gap-1 text-xs font-semibold text-white/85">
+                            Limite
+                            <input
+                              className="h-10 rounded-2xl border border-white/20 bg-white px-3 text-sm text-slate-950 outline-none"
+                              inputMode="decimal"
+                              name="limit"
+                              placeholder="Sem limite"
+                              defaultValue={
+                                card.limit_cents
+                                  ? (card.limit_cents / 100)
+                                      .toFixed(2)
+                                      .replace(".", ",")
+                                  : ""
+                              }
+                            />
+                          </label>
+                          <SubmitButton
+                            className="h-10 rounded-2xl bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-100"
+                            pendingLabel="Salvando..."
+                          >
+                            Salvar edição
+                          </SubmitButton>
+                        </form>
+                      </details>
                       <form action={deleteCreditCard} className="mt-4">
                         <input name="id" type="hidden" value={card.id} />
                         <ConfirmButton
@@ -299,13 +430,71 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
             <CalendarCheck2 className="size-5 text-emerald-600" />
           </div>
 
+          <div className="mt-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "Todas", value: "all" },
+                { label: "Em aberto", value: "open" },
+                { label: "Pagas", value: "paid" },
+                { label: "Atrasadas", value: "overdue" },
+              ].map((option) => (
+                <Link
+                  className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
+                    activeInvoiceStatus === option.value
+                      ? "bg-slate-950 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-100"
+                  }`}
+                  href={filterHref({
+                    invoiceStatus: option.value,
+                    q: invoiceSearch,
+                  })}
+                  key={option.value}
+                >
+                  {option.label}
+                </Link>
+              ))}
+            </div>
+
+            <form action="/cards" className="flex flex-col gap-2 sm:flex-row">
+              {activeInvoiceStatus !== "all" ? (
+                <input
+                  name="invoiceStatus"
+                  type="hidden"
+                  value={activeInvoiceStatus}
+                />
+              ) : null}
+              <input
+                className="h-10 min-w-0 rounded-full border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 sm:w-72"
+                name="q"
+                placeholder="Buscar por cartão, compra ou categoria"
+                defaultValue={invoiceSearch}
+              />
+              <button className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+                Buscar
+              </button>
+            </form>
+          </div>
+
           <div className="mt-5 grid gap-4">
-            {invoicesResult.invoices.length > 0 ? (
-              invoicesResult.invoices.map((invoice) => (
+            {filteredInvoices.length > 0 ? (
+              filteredInvoices.map((invoice) => (
                 <article
                   className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50"
                   key={invoice.key}
                 >
+                  {/*
+                    A fatura pode estar paga com valor menor que o total quando
+                    o restante foi carregado para o mês seguinte.
+                  */}
+                  {(() => {
+                    const transferredCents =
+                      invoice.status === "paid" &&
+                      invoice.paid_cents < invoice.total_cents
+                        ? invoice.total_cents - invoice.paid_cents
+                        : 0;
+
+                    return (
+                      <>
                   <div className="grid gap-4 bg-white p-4 md:grid-cols-[1fr_auto] md:items-start">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -363,7 +552,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
 
                   <div
                     className={`grid gap-3 border-t border-slate-200 p-4 ${
-                      invoice.interest_cents > 0
+                      invoice.interest_cents > 0 || transferredCents > 0
                         ? "md:grid-cols-4"
                         : "md:grid-cols-3"
                     }`}
@@ -385,6 +574,14 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                         <p className="text-xs text-slate-500">Juros/taxas</p>
                         <p className="mt-1 font-semibold text-orange-700">
                           {formatCurrencyFromCents(invoice.interest_cents)}
+                        </p>
+                      </div>
+                    ) : null}
+                    {transferredCents > 0 ? (
+                      <div className="rounded-2xl bg-white p-3">
+                        <p className="text-xs text-slate-500">Transferido</p>
+                        <p className="mt-1 font-semibold text-amber-700">
+                          {formatCurrencyFromCents(transferredCents)}
                         </p>
                       </div>
                     ) : null}
@@ -476,6 +673,23 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                                   Pagar
                                 </ConfirmButton>
                               </form>
+                              {item.can_delete_purchase ? (
+                                <form action={deleteCreditCardPurchase}>
+                                  <input
+                                    name="id"
+                                    type="hidden"
+                                    value={item.purchase_id}
+                                  />
+                                  <ConfirmButton
+                                    className="h-9"
+                                    message={`Excluir a compra "${item.purchase_description}" e todas as parcelas dela?`}
+                                    pendingLabel="Excluindo..."
+                                    variant="danger"
+                                  >
+                                    Excluir compra
+                                  </ConfirmButton>
+                                </form>
+                              ) : null}
                             </div>
                           ) : item.paid_transaction_id &&
                             !invoice.payment_transaction_id ? (
@@ -541,77 +755,19 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                       </div>
                     ))}
                   </div>
+                      </>
+                    );
+                  })()}
                 </article>
               ))
             ) : (
               <div className="grid min-h-44 place-items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                Nenhuma fatura gerada ainda. Lance uma compra parcelada para ver
-                a consolidação por cartão e mês.
+                Nenhuma fatura encontrada para os filtros selecionados.
               </div>
             )}
           </div>
         </section>
 
-        <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">Compras recentes</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Últimas compras lançadas em cartões de crédito.
-              </p>
-            </div>
-            <ReceiptText className="size-5 text-slate-400" />
-          </div>
-
-          <div className="mt-5 overflow-hidden rounded-3xl border border-slate-200">
-            {purchasesResult.purchases.length > 0 ? (
-              <div className="divide-y divide-slate-200">
-                {purchasesResult.purchases.map((purchase) => (
-                  <div
-                    className="grid gap-3 bg-white p-4 transition hover:bg-slate-50 md:grid-cols-[1fr_auto_auto] md:items-center"
-                    key={purchase.id}
-                  >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-slate-950">
-                          {purchase.description}
-                        </h3>
-                        {purchase.category_name ? (
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                            {purchase.category_name}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {purchase.card_name} · {purchase.installments_count}x ·{" "}
-                        {formatDate(purchase.purchase_date)}
-                      </p>
-                    </div>
-
-                    <strong className="text-lg text-slate-950">
-                      {formatCurrencyFromCents(purchase.total_amount_cents)}
-                    </strong>
-
-                    <form action={deleteCreditCardPurchase}>
-                      <input name="id" type="hidden" value={purchase.id} />
-                      <ConfirmButton
-                        className="inline-flex items-center gap-2"
-                        message={`Excluir a compra "${purchase.description}"? As parcelas dela também serão removidas.`}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Excluir
-                      </ConfirmButton>
-                    </form>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid min-h-44 place-items-center bg-slate-50 p-6 text-center text-sm text-slate-500">
-                Nenhuma compra no cartão registrada ainda.
-              </div>
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );

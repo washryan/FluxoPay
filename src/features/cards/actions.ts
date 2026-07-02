@@ -7,6 +7,7 @@ import {
   creditCardPurchaseSchema,
   creditCardSchema,
   invoicePaymentSchema,
+  updateCreditCardSchema,
 } from "@/features/cards/schemas";
 import { parseCurrencyToCents } from "@/features/transactions/money";
 import { createClient } from "@/lib/supabase/server";
@@ -28,6 +29,72 @@ function todayInSaoPaulo() {
   );
 
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+function addMonthsToMonth(month: string, offset: number) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 1 + offset, 1));
+
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function dueDateForMonth(month: string, dueDay: number) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+
+  return `${year}-${String(monthNumber).padStart(2, "0")}-${String(
+    Math.min(dueDay, lastDay),
+  ).padStart(2, "0")}`;
+}
+
+async function findNextOpenInvoiceDueDate({
+  cardId,
+  dueDay,
+  invoiceMonth,
+  supabase,
+  userId,
+}: {
+  cardId: string;
+  dueDay: number;
+  invoiceMonth: string;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+}) {
+  for (let offset = 1; offset <= 72; offset += 1) {
+    const candidateMonth = addMonthsToMonth(invoiceMonth, offset);
+    const range = monthRange(candidateMonth);
+
+    if (!range) {
+      continue;
+    }
+
+    const { data, error } = await supabase
+      .from("installments")
+      .select(
+        `
+        status,
+        credit_card_purchases!inner(credit_card_id)
+        `,
+      )
+      .eq("user_id", userId)
+      .eq("credit_card_purchases.credit_card_id", cardId)
+      .gte("due_date", range.start)
+      .lt("due_date", range.end);
+
+    if (error) {
+      throw new Error("next_invoice_lookup_failed");
+    }
+
+    const statuses = (data ?? []).map((row) => row.status as string);
+    const isClosedAsPaid =
+      statuses.length > 0 && statuses.every((status) => status === "paid");
+
+    if (!isClosedAsPaid) {
+      return dueDateForMonth(candidateMonth, dueDay);
+    }
+  }
+
+  throw new Error("next_invoice_not_found");
 }
 
 function slugify(value: string) {
@@ -136,6 +203,57 @@ export async function createCreditCard(formData: FormData) {
   cardsRedirect({ success: "Cartão criado." });
 }
 
+export async function updateCreditCard(formData: FormData) {
+  const parsed = updateCreditCardSchema.safeParse({
+    id: formData.get("id"),
+    name: formData.get("name"),
+    closing_day: formData.get("closing_day"),
+    due_day: formData.get("due_day"),
+    limit: formData.get("limit"),
+  });
+
+  if (!parsed.success) {
+    cardsRedirect({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." });
+  }
+
+  const limitCents = parsed.data.limit
+    ? parseCurrencyToCents(parsed.data.limit)
+    : null;
+
+  if (parsed.data.limit && (!limitCents || limitCents <= 0)) {
+    cardsRedirect({ error: "Informe um limite válido ou deixe em branco." });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase
+    .from("credit_cards")
+    .update({
+      closing_day: parsed.data.closing_day,
+      due_day: parsed.data.due_day,
+      limit_cents: limitCents,
+      name: parsed.data.name,
+    })
+    .eq("id", parsed.data.id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    cardsRedirect({ error: "Não foi possível editar o cartão." });
+  }
+
+  revalidatePath("/cards");
+  revalidatePath("/dashboard");
+  revalidatePath("/resumo");
+  cardsRedirect({ success: "Cartão atualizado." });
+}
+
 export async function deleteCreditCard(formData: FormData) {
   const id = String(formData.get("id") ?? "");
 
@@ -213,10 +331,38 @@ export async function deleteCreditCardPurchase(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: paidInstallments, error: paidLookupError } = await supabase
+    .from("installments")
+    .select("id")
+    .eq("purchase_id", id)
+    .eq("user_id", user.id)
+    .eq("status", "paid")
+    .limit(1);
+
+  if (paidLookupError) {
+    cardsRedirect({ error: "Não foi possível verificar a compra." });
+  }
+
+  if ((paidInstallments ?? []).length > 0) {
+    cardsRedirect({
+      error:
+        "Não é possível excluir uma compra com parcela paga. Revogue o pagamento antes.",
+    });
+  }
+
   const { error } = await supabase
     .from("credit_card_purchases")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     cardsRedirect({ error: "Não foi possível excluir a compra." });
@@ -489,11 +635,17 @@ type InvoicePaymentRow = {
   credit_card_purchases:
     | {
         credit_card_id: string;
-        credit_cards: { name: string } | { name: string }[] | null;
+        credit_cards:
+          | { name: string; due_day: number }
+          | { name: string; due_day: number }[]
+          | null;
       }
     | {
         credit_card_id: string;
-        credit_cards: { name: string } | { name: string }[] | null;
+        credit_cards:
+          | { name: string; due_day: number }
+          | { name: string; due_day: number }[]
+          | null;
       }[]
     | null;
 };
@@ -509,6 +661,9 @@ export async function markInvoiceAsPaid(formData: FormData) {
     credit_is_installment: formData.get("credit_is_installment"),
     credit_installments_count: formData.get("credit_installments_count"),
     credit_installment_amount: formData.get("credit_installment_amount"),
+    carry_remaining_to_next_invoice: formData.get(
+      "carry_remaining_to_next_invoice",
+    ),
   });
 
   if (!parsed.success) {
@@ -545,7 +700,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
       status,
       credit_card_purchases!inner(
         credit_card_id,
-        credit_cards(name)
+        credit_cards(name, due_day)
       )
       `,
     )
@@ -590,16 +745,24 @@ export async function markInvoiceAsPaid(formData: FormData) {
     cardsRedirect({ error: "Informe um valor pago maior que zero." });
   }
 
-  if (paidCents < openCents) {
+  const remainingCents = openCents - paidCents;
+  const isPartialPayment = remainingCents > 0;
+
+  if (
+    isPartialPayment &&
+    parsed.data.carry_remaining_to_next_invoice !== "yes"
+  ) {
     cardsRedirect({
       error:
-        "Pagamento parcial de fatura ainda não está disponível. Informe um valor igual ou maior que o valor em aberto.",
+        "Confirme que deseja adicionar o restante na próxima fatura para registrar um pagamento parcial.",
     });
   }
 
-  const interestCents = paidCents - openCents;
+  const interestCents = Math.max(0, paidCents - openCents);
   const paymentDescription =
-    interestCents > 0
+    isPartialPayment
+      ? `Pagamento parcial fatura ${card?.name ?? "cartão"} ${month}`
+      : interestCents > 0
       ? `Pagamento fatura ${card?.name ?? "cartão"} ${month} com juros`
       : `Pagamento fatura ${card?.name ?? "cartão"} ${month}`;
   const { data: transaction, error: transactionError } = await supabase
@@ -614,7 +777,9 @@ export async function markInvoiceAsPaid(formData: FormData) {
       transaction_date: paymentDate,
       source: "web",
       notes:
-        interestCents > 0
+        isPartialPayment
+          ? `Fatura em aberto: ${openCents} centavos. Restante transferido: ${remainingCents} centavos.`
+          : interestCents > 0
           ? `Fatura em aberto: ${openCents} centavos. Juros/taxas: ${interestCents} centavos.`
           : null,
     })
@@ -626,6 +791,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
   }
 
   let transferredPurchaseId: string | null = null;
+  let carriedPurchaseId: string | null = null;
 
   if (isCreditPayment) {
     const paymentCardId = parsed.data.payment_credit_card_id;
@@ -695,6 +861,133 @@ export async function markInvoiceAsPaid(formData: FormData) {
     }
   }
 
+  if (isPartialPayment) {
+    const cardDueDay = card?.due_day;
+
+    if (!cardDueDay) {
+      if (transferredPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", transferredPurchaseId)
+          .eq("user_id", user.id);
+      }
+
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Não foi possível identificar o vencimento do cartão.",
+      });
+    }
+
+    let carriedDueDate: string;
+
+    try {
+      carriedDueDate = await findNextOpenInvoiceDueDate({
+        cardId,
+        dueDay: cardDueDay,
+        invoiceMonth: month,
+        supabase,
+        userId: user.id,
+      });
+    } catch {
+      if (transferredPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", transferredPurchaseId)
+          .eq("user_id", user.id);
+      }
+
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Não foi possível encontrar a próxima fatura em aberto.",
+      });
+    }
+
+    const { data: carriedPurchase, error: carriedPurchaseError } =
+      await supabase
+        .from("credit_card_purchases")
+        .insert({
+          user_id: user.id,
+          credit_card_id: cardId,
+          category_id: invoiceCategoryId,
+          description: "Restante do mês passado",
+          total_amount_cents: remainingCents,
+          purchase_date: paymentDate,
+          installments_count: 1,
+          source: "web",
+          skip_transaction_on_payment: false,
+          source_invoice_transaction_id: transaction.id,
+        })
+        .select("id")
+        .single();
+
+    if (carriedPurchaseError || !carriedPurchase) {
+      if (transferredPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", transferredPurchaseId)
+          .eq("user_id", user.id);
+      }
+
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Não foi possível transferir o restante para a próxima fatura.",
+      });
+    }
+
+    carriedPurchaseId = carriedPurchase.id as string;
+
+    const { error: carriedInstallmentError } = await supabase
+      .from("installments")
+      .insert({
+        user_id: user.id,
+        purchase_id: carriedPurchaseId,
+        installment_number: 1,
+        amount_cents: remainingCents,
+        due_date: carriedDueDate,
+        status: carriedDueDate < todayInSaoPaulo() ? "overdue" : "pending",
+      });
+
+    if (carriedInstallmentError) {
+      await supabase
+        .from("credit_card_purchases")
+        .delete()
+        .eq("id", carriedPurchaseId)
+        .eq("user_id", user.id);
+
+      if (transferredPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", transferredPurchaseId)
+          .eq("user_id", user.id);
+      }
+
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Não foi possível criar a parcela do restante.",
+      });
+    }
+  }
+
   const ids = installments.map((installment) => installment.id);
   const { error: updateError } = await supabase
     .from("installments")
@@ -706,6 +999,14 @@ export async function markInvoiceAsPaid(formData: FormData) {
     .eq("user_id", user.id);
 
   if (updateError) {
+    if (carriedPurchaseId) {
+      await supabase
+        .from("credit_card_purchases")
+        .delete()
+        .eq("id", carriedPurchaseId)
+        .eq("user_id", user.id);
+    }
+
     if (transferredPurchaseId) {
       await supabase
         .from("credit_card_purchases")

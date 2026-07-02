@@ -22,6 +22,10 @@ export const creditCardSchema = z.object({
   limit: z.string().trim().optional(),
 });
 
+export const updateCreditCardSchema = creditCardSchema.extend({
+  id: z.uuid("Cartão inválido."),
+});
+
 export const creditCardPurchaseSchema = z.object({
   credit_card_id: z.uuid("Selecione um cartão."),
   description: z
@@ -56,6 +60,7 @@ export const invoicePaymentSchema = z
     credit_is_installment: optionalInstallmentModeSchema,
     credit_installments_count: optionalInstallmentsCountSchema,
     credit_installment_amount: optionalFormStringSchema,
+    carry_remaining_to_next_invoice: optionalInstallmentModeSchema,
   })
   .superRefine((data, context) => {
     if (data.payment_method !== "credit_card") {

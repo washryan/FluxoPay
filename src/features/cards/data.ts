@@ -261,6 +261,7 @@ export type CreditCardInvoiceItem = {
   category_color: string | null;
   source_invoice_transaction_id: string | null;
   source_invoice_details: CreditCardInvoicePaymentDetail[];
+  can_delete_purchase: boolean;
 };
 
 export type CreditCardInvoicePaymentDetail = {
@@ -425,6 +426,11 @@ export async function getCreditCardInvoices() {
 
   const grouped = new Map<string, CreditCardInvoice>();
   const rows = (data ?? []) as unknown as InvoiceInstallmentRow[];
+  const purchasesWithPaidInstallments = new Set(
+    rows
+      .filter((installment) => installment.status === "paid")
+      .map((installment) => installment.purchase_id),
+  );
   const paidTransactionIds = Array.from(
     new Set(rows.map((installment) => installment.paid_transaction_id).filter(Boolean)),
   ) as string[];
@@ -557,6 +563,9 @@ export async function getCreditCardInvoices() {
       source_invoice_details: purchase.source_invoice_transaction_id
         ? (sourceDetailsByTransaction.get(purchase.source_invoice_transaction_id) ?? [])
         : [],
+      can_delete_purchase:
+        !purchase.source_invoice_transaction_id &&
+        !purchasesWithPaidInstallments.has(installment.purchase_id),
     };
 
     current.items.push(item);

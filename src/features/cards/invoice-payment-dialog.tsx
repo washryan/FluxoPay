@@ -210,10 +210,23 @@ export function InvoicePaymentDialog({
                 </label>
               )}
 
-              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
-                Se o valor pago for maior que a fatura, o FluxoPay registra a
-                diferença como juros/taxa no pagamento. Pagamento parcial ainda
-                não está habilitado.
+              <div className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+                <p>
+                  Se o valor pago for maior que a fatura, o FluxoPay registra a
+                  diferença como juros/taxa no pagamento.
+                </p>
+                <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <input
+                    className="mt-0.5 size-4 accent-amber-600"
+                    name="carry_remaining_to_next_invoice"
+                    type="checkbox"
+                    value="yes"
+                  />
+                  <span>
+                    Se este for um pagamento parcial, adicionar o restante na
+                    próxima fatura como &quot;Restante do mês passado&quot;.
+                  </span>
+                </label>
               </div>
 
               <div className="flex flex-wrap justify-end gap-2">
