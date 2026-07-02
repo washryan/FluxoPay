@@ -3,6 +3,7 @@
 import { CreditCard, Settings2, X } from "lucide-react";
 import { useState } from "react";
 
+import { SubmitButton } from "@/components/submit-button";
 import { cardPresets } from "@/features/cards/presets";
 
 type CardPreset = (typeof cardPresets)[number];
@@ -144,9 +145,12 @@ export function PresetCardPicker({ action }: PresetCardPickerProps) {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button className="h-11 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800">
+                <SubmitButton
+                  className="h-11 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800"
+                  pendingLabel="Criando..."
+                >
                   Criar cartão
-                </button>
+                </SubmitButton>
                 <button
                   className="h-11 rounded-2xl border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                   type="button"

@@ -22,11 +22,19 @@ type BillRow = {
   status: "pending" | "paid" | "overdue" | "cancelled";
 };
 
+type TrendMonth = {
+  key: string;
+  label: string;
+};
+
 export type DashboardTrendPoint = {
   month: string;
   income: number;
   expense: number;
 };
+
+export type DashboardTrendRange = "6m" | "1y" | "total";
+export type DashboardExpenseRange = "month" | "year" | "total";
 
 export type DashboardData = {
   currentMonth: {
@@ -35,6 +43,11 @@ export type DashboardData = {
     balanceCents: number;
     transactionsCount: number;
   };
+  lifetime: {
+    incomeCents: number;
+    expenseCents: number;
+    balanceCents: number;
+  };
   upcomingBills: BillRow[];
   topExpenseCategories: Array<{
     id: string;
@@ -42,6 +55,8 @@ export type DashboardData = {
     color: string;
     amountCents: number;
   }>;
+  topExpenseRangeLabel: string;
+  trendRangeLabel: string;
   trend: DashboardTrendPoint[];
   error: string | null;
 };
@@ -54,6 +69,10 @@ function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
+function startOfYear(date: Date) {
+  return new Date(date.getFullYear(), 0, 1);
+}
+
 function endOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
@@ -64,39 +83,103 @@ function addDays(date: Date, days: number) {
   return nextDate;
 }
 
-function getTrendMonths(referenceDate: Date) {
-  return Array.from({ length: 6 }, (_, index) => {
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(date: Date, includeYear = false) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "short",
+    ...(includeYear ? { year: "2-digit" } : {}),
+  }).format(date);
+}
+
+function getTrendMonths({
+  referenceDate,
+  range,
+  transactions,
+}: {
+  referenceDate: Date;
+  range: DashboardTrendRange;
+  transactions: TransactionRow[];
+}): TrendMonth[] {
+  if (range === "total") {
+    const sorted = [...transactions].sort((a, b) =>
+      a.transaction_date.localeCompare(b.transaction_date),
+    );
+    const firstDate = sorted[0]?.transaction_date
+      ? new Date(`${sorted[0].transaction_date}T00:00:00`)
+      : new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+    const firstMonth = startOfMonth(firstDate);
+    const lastMonth = startOfMonth(referenceDate);
+    const months: TrendMonth[] = [];
+    const cursor = new Date(firstMonth);
+
+    while (cursor <= lastMonth) {
+      months.push({
+        key: monthKey(cursor),
+        label: monthLabel(cursor, true),
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    return months;
+  }
+
+  const length = range === "1y" ? 12 : 6;
+
+  return Array.from({ length }, (_, index) => {
     const date = new Date(
       referenceDate.getFullYear(),
-      referenceDate.getMonth() - (5 - index),
+      referenceDate.getMonth() - (length - 1 - index),
       1,
     );
 
     return {
-      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-      label: new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(date),
-      start: toDateInput(startOfMonth(date)),
-      end: toDateInput(endOfMonth(date)),
+      key: monthKey(date),
+      label: monthLabel(date, range === "1y"),
     };
   });
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
+function normalizeTrendRange(value?: string): DashboardTrendRange {
+  if (value === "1y" || value === "total") {
+    return value;
+  }
+
+  return "6m";
+}
+
+function normalizeExpenseRange(value?: string): DashboardExpenseRange {
+  if (value === "year" || value === "total") {
+    return value;
+  }
+
+  return "month";
+}
+
+export async function getDashboardData({
+  expenseRange: rawExpenseRange,
+  trendRange: rawTrendRange,
+}: {
+  expenseRange?: string;
+  trendRange?: string;
+} = {}): Promise<DashboardData> {
   await syncOverdueStatuses();
 
   const supabase = await createClient();
   const today = new Date();
+  const todayInput = toDateInput(today);
   const currentMonthStart = startOfMonth(today);
   const currentMonthEnd = endOfMonth(today);
-  const trendMonths = getTrendMonths(today);
-  const trendStart = trendMonths[0]?.start ?? toDateInput(currentMonthStart);
+  const expenseRange = normalizeExpenseRange(rawExpenseRange);
+  const trendRange = normalizeTrendRange(rawTrendRange);
 
   const [transactionsResult, billsResult, categoriesResult] = await Promise.all([
     supabase
       .from("transactions")
       .select("type, amount_cents, transaction_date, category_id")
-      .gte("transaction_date", trendStart)
-      .lte("transaction_date", toDateInput(currentMonthEnd)),
+      .lte("transaction_date", todayInput),
     supabase
       .from("bills")
       .select("id, name, amount_cents, due_date, status")
@@ -109,6 +192,11 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const firstError =
     transactionsResult.error ?? billsResult.error ?? categoriesResult.error;
+  const fallbackTrendMonths = getTrendMonths({
+    referenceDate: today,
+    range: trendRange,
+    transactions: [],
+  });
 
   if (firstError) {
     return {
@@ -118,9 +206,16 @@ export async function getDashboardData(): Promise<DashboardData> {
         balanceCents: 0,
         transactionsCount: 0,
       },
+      lifetime: {
+        incomeCents: 0,
+        expenseCents: 0,
+        balanceCents: 0,
+      },
       upcomingBills: [],
       topExpenseCategories: [],
-      trend: trendMonths.map((month) => ({
+      topExpenseRangeLabel: "mês atual",
+      trendRangeLabel: "últimos 6 meses",
+      trend: fallbackTrendMonths.map((month) => ({
         month: month.label,
         income: 0,
         expense: 0,
@@ -150,17 +245,41 @@ export async function getDashboardData(): Promise<DashboardData> {
     .filter((transaction) => transaction.type === "expense")
     .reduce((total, transaction) => total + transaction.amount_cents, 0);
 
+  const lifetimeIncomeCents = transactions
+    .filter((transaction) => transaction.type === "income")
+    .reduce((total, transaction) => total + transaction.amount_cents, 0);
+
+  const lifetimeExpenseCents = transactions
+    .filter((transaction) => transaction.type === "expense")
+    .reduce((total, transaction) => total + transaction.amount_cents, 0);
+
+  const topExpenseStart =
+    expenseRange === "month"
+      ? currentMonthStart
+      : expenseRange === "year"
+        ? startOfYear(today)
+        : null;
+  const expenseTransactions = transactions.filter((transaction) => {
+    if (transaction.type !== "expense") {
+      return false;
+    }
+
+    if (!topExpenseStart) {
+      return true;
+    }
+
+    const date = new Date(`${transaction.transaction_date}T00:00:00`);
+    return date >= topExpenseStart && date <= today;
+  });
   const expensesByCategory = new Map<string, number>();
 
-  currentMonthTransactions
-    .filter((transaction) => transaction.type === "expense")
-    .forEach((transaction) => {
-      const categoryId = transaction.category_id ?? "uncategorized";
-      expensesByCategory.set(
-        categoryId,
-        (expensesByCategory.get(categoryId) ?? 0) + transaction.amount_cents,
-      );
-    });
+  expenseTransactions.forEach((transaction) => {
+    const categoryId = transaction.category_id ?? "uncategorized";
+    expensesByCategory.set(
+      categoryId,
+      (expensesByCategory.get(categoryId) ?? 0) + transaction.amount_cents,
+    );
+  });
 
   const topExpenseCategories = Array.from(expensesByCategory.entries())
     .map(([categoryId, amountCents]) => {
@@ -176,6 +295,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     .sort((a, b) => b.amountCents - a.amountCents)
     .slice(0, 5);
 
+  const trendMonths = getTrendMonths({
+    referenceDate: today,
+    range: trendRange,
+    transactions,
+  });
   const trend = trendMonths.map((month) => {
     const monthTransactions = transactions.filter((transaction) => {
       const transactionMonth = transaction.transaction_date.slice(0, 7);
@@ -204,8 +328,25 @@ export async function getDashboardData(): Promise<DashboardData> {
       balanceCents: incomeCents - expenseCents,
       transactionsCount: currentMonthTransactions.length,
     },
+    lifetime: {
+      incomeCents: lifetimeIncomeCents,
+      expenseCents: lifetimeExpenseCents,
+      balanceCents: lifetimeIncomeCents - lifetimeExpenseCents,
+    },
     upcomingBills: bills,
     topExpenseCategories,
+    topExpenseRangeLabel:
+      expenseRange === "month"
+        ? "mês atual"
+        : expenseRange === "year"
+          ? "ano atual"
+          : "todo o histórico",
+    trendRangeLabel:
+      trendRange === "6m"
+        ? "últimos 6 meses"
+        : trendRange === "1y"
+          ? "últimos 12 meses"
+          : "todo o histórico",
     trend,
     error: null,
   };

@@ -138,12 +138,38 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                             ? formatCurrencyFromCents(card.limit_cents)
                             : "não informado"}
                         </p>
+                        <p>
+                          Em aberto: {formatCurrencyFromCents(card.open_cents)}
+                        </p>
+                        <p>
+                          Disponível:{" "}
+                          {card.available_cents === null
+                            ? "sem limite informado"
+                            : formatCurrencyFromCents(card.available_cents)}
+                        </p>
                       </div>
+                      {card.limit_cents ? (
+                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/20">
+                          <div
+                            className="h-full rounded-full bg-white/90"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.max(
+                                  0,
+                                  (card.open_cents / card.limit_cents) * 100,
+                                ),
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      ) : null}
                       <form action={deleteCreditCard} className="mt-4">
                         <input name="id" type="hidden" value={card.id} />
                         <ConfirmButton
                           className="inline-flex items-center gap-2 bg-white/95 text-slate-950 hover:bg-white"
                           message={`Excluir o cartão ${card.name}? As compras e parcelas dele também serão removidas.`}
+                          pendingLabel="Excluindo..."
                         >
                           <Trash2 className="size-3.5" />
                           Excluir
@@ -242,6 +268,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                         <ConfirmButton
                           className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
                           message={`Marcar a parcela de ${formatCurrencyFromCents(installment.amount_cents)} como paga?`}
+                          pendingLabel="Pagando..."
                         >
                           Marcar como paga
                         </ConfirmButton>
@@ -320,6 +347,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                           <ConfirmButton
                             className="h-10 px-4 text-sm"
                             message={`Pagar a fatura de ${invoice.card_name} no valor em aberto de ${formatCurrencyFromCents(invoice.open_cents)}?`}
+                            pendingLabel="Pagando..."
                             variant="dark"
                           >
                             Pagar fatura
@@ -392,6 +420,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                             <ConfirmButton
                               className="h-9"
                               message={`Pagar esta parcela de ${formatCurrencyFromCents(item.amount_cents)}?`}
+                              pendingLabel="Pagando..."
                               variant="emerald"
                             >
                               Pagar parcela

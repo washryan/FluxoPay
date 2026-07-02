@@ -85,7 +85,7 @@ export default async function TransactionsPage({
           </article>
           <article className="interactive-card animate-rise rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-500">Saídas filtradas</p>
-            <p className="mt-3 text-3xl font-semibold text-orange-600">
+            <p className="mt-3 text-3xl font-semibold text-red-600">
               {formatCurrencyFromCents(totalExpense)}
             </p>
           </article>
@@ -190,13 +190,19 @@ export default async function TransactionsPage({
                         className={
                           transaction.type === "income"
                             ? "font-semibold text-emerald-700"
-                            : "font-semibold text-orange-600"
+                            : "font-semibold text-red-600"
                         }
                       >
                         {transaction.type === "income" ? "+" : "-"}{" "}
                         {formatCurrencyFromCents(transaction.amount_cents)}
                       </p>
-                      <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                      <span
+                        className={`inline-flex h-7 w-fit items-center justify-center rounded-full px-3 text-xs font-semibold leading-none ${
+                          transaction.type === "income"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                        }`}
+                      >
                         {transactionTypeLabels[transaction.type]}
                       </span>
                       <div className="flex flex-wrap items-center gap-2">

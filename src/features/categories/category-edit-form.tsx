@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { CategoryColorPicker } from "@/features/categories/color-picker";
 import type { Category } from "@/features/categories/data";
+import { SubmitButton } from "@/components/submit-button";
 
 type CategoryEditFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -57,9 +58,12 @@ export function CategoryEditForm({ action, category }: CategoryEditFormProps) {
             <CategoryColorPicker defaultValue={category.color} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="h-10 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+            <SubmitButton
+              className="h-10 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+              pendingLabel="Salvando..."
+            >
               Salvar alterações
-            </button>
+            </SubmitButton>
             <button
               className="h-10 rounded-2xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-white"
               type="button"

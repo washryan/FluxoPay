@@ -147,6 +147,7 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
                           <input name="status" type="hidden" value="paid" />
                           <ConfirmButton
                             message={`Marcar "${bill.name}" como paga?`}
+                            pendingLabel="Pagando..."
                             variant="emerald"
                           >
                             Pagar
@@ -157,6 +158,7 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
                           <input name="status" type="hidden" value="cancelled" />
                           <ConfirmButton
                             message={`Cancelar "${bill.name}"?`}
+                            pendingLabel="Cancelando..."
                           >
                             Cancelar
                           </ConfirmButton>

@@ -9,7 +9,7 @@ type DeleteButtonProps = {
 
 export function DeleteButton({ children = "Excluir", message }: DeleteButtonProps) {
   return (
-    <ConfirmButton message={message} variant="danger">
+    <ConfirmButton message={message} pendingLabel="Excluindo..." variant="danger">
       {children}
     </ConfirmButton>
   );

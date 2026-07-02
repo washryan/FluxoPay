@@ -1,5 +1,6 @@
 import { CreditCard } from "lucide-react";
 
+import { SubmitButton } from "@/components/submit-button";
 import { createCreditCard } from "@/features/cards/actions";
 
 export function CustomCardForm() {
@@ -60,9 +61,12 @@ export function CustomCardForm() {
             placeholder="Ex: 2500,00"
           />
         </label>
-        <button className="h-11 w-fit rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800">
+        <SubmitButton
+          className="h-11 w-fit rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800"
+          pendingLabel="Salvando..."
+        >
           Salvar cartão
-        </button>
+        </SubmitButton>
       </form>
     </article>
   );

@@ -5,10 +5,12 @@ import {
   Bot,
   CalendarClock,
 } from "lucide-react";
+import Link from "next/link";
 
 import { getDashboardData } from "@/features/dashboard/data";
 import { MonthlyChart } from "@/features/dashboard/monthly-chart";
 import { formatCurrencyFromCents, formatDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 
 const cardToneClasses = {
   emerald: {
@@ -25,8 +27,74 @@ const cardToneClasses = {
   },
 };
 
-export default async function DashboardPage() {
-  const dashboard = await getDashboardData();
+type DashboardPageProps = {
+  searchParams: Promise<{
+    expenses?: string;
+    trend?: string;
+  }>;
+};
+
+function filterHref(
+  params: { expenses?: string; trend?: string },
+  next: { expenses?: string; trend?: string },
+) {
+  const query = new URLSearchParams();
+  const expenses = next.expenses ?? params.expenses;
+  const trend = next.trend ?? params.trend;
+
+  if (expenses && expenses !== "month") {
+    query.set("expenses", expenses);
+  }
+
+  if (trend && trend !== "6m") {
+    query.set("trend", trend);
+  }
+
+  const value = query.toString();
+  return value ? `/dashboard?${value}` : "/dashboard";
+}
+
+function FilterPills({
+  active,
+  options,
+}: {
+  active?: string;
+  options: Array<{ href: string; label: string; value: string }>;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <Link
+          className={cn(
+            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+            active === option.value
+              ? "bg-slate-950 text-white"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+          )}
+          href={option.href}
+          key={option.value}
+        >
+          {option.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
+  const params = await searchParams;
+  const activeExpenses =
+    params.expenses === "year" || params.expenses === "total"
+      ? params.expenses
+      : "month";
+  const activeTrend =
+    params.trend === "1y" || params.trend === "total" ? params.trend : "6m";
+  const dashboard = await getDashboardData({
+    expenseRange: activeExpenses,
+    trendRange: activeTrend,
+  });
   const cards = [
     {
       label: "Entradas do mês",
@@ -41,13 +109,6 @@ export default async function DashboardPage() {
       helper: "Somatório das despesas registradas",
       icon: ArrowDownRight,
       tone: "red",
-    },
-    {
-      label: "Saldo",
-      value: formatCurrencyFromCents(dashboard.currentMonth.balanceCents),
-      helper: "Entradas menos saídas do mês",
-      icon: CalendarClock,
-      tone: "slate",
     },
   ] as const;
 
@@ -76,7 +137,7 @@ export default async function DashboardPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 lg:grid-cols-3">
           {cards.map((card) => {
             const toneClasses = cardToneClasses[card.tone];
 
@@ -102,20 +163,66 @@ export default async function DashboardPage() {
               </article>
             );
           })}
+          <article className="interactive-card animate-rise rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-medium text-slate-500">Saldo</p>
+              <span className="rounded-2xl bg-slate-100 p-2 text-slate-800">
+                <CalendarClock className="size-5" />
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Mês atual
+                </p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                  {formatCurrencyFromCents(dashboard.currentMonth.balanceCents)}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700/70">
+                  Total disponível
+                </p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-800">
+                  {formatCurrencyFromCents(dashboard.lifetime.balanceCents)}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Total considera transações desde o início até hoje.
+            </p>
+          </article>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold">Fluxo mensal</h2>
                 <p className="text-sm text-slate-500">
-                  Entradas e saídas dos últimos 6 meses.
+                  Entradas e saídas de {dashboard.trendRangeLabel}.
                 </p>
               </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                Últimos 6 meses
-              </span>
+              <FilterPills
+                active={activeTrend}
+                options={[
+                  {
+                    href: filterHref(params, { trend: "6m" }),
+                    label: "6 meses",
+                    value: "6m",
+                  },
+                  {
+                    href: filterHref(params, { trend: "1y" }),
+                    label: "1 ano",
+                    value: "1y",
+                  },
+                  {
+                    href: filterHref(params, { trend: "total" }),
+                    label: "Total",
+                    value: "total",
+                  },
+                ]}
+              />
             </div>
             <MonthlyChart data={dashboard.trend} />
           </article>
@@ -165,13 +272,33 @@ export default async function DashboardPage() {
 
         <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold">Maiores gastos</h2>
                 <p className="text-sm text-slate-500">
-                  Categorias com maior despesa no mês atual.
+                  Categorias com maior despesa em {dashboard.topExpenseRangeLabel}.
                 </p>
               </div>
+              <FilterPills
+                active={activeExpenses}
+                options={[
+                  {
+                    href: filterHref(params, { expenses: "month" }),
+                    label: "Mês",
+                    value: "month",
+                  },
+                  {
+                    href: filterHref(params, { expenses: "year" }),
+                    label: "Ano",
+                    value: "year",
+                  },
+                  {
+                    href: filterHref(params, { expenses: "total" }),
+                    label: "Total",
+                    value: "total",
+                  },
+                ]}
+              />
             </div>
             <div className="mt-6 space-y-3">
               {dashboard.topExpenseCategories.length > 0 ? (

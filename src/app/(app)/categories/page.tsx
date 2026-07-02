@@ -1,4 +1,5 @@
 import { DeleteButton } from "@/components/delete-button";
+import { SubmitButton } from "@/components/submit-button";
 import {
   createCategory,
   deleteCategory,
@@ -92,9 +93,12 @@ export default async function CategoriesPage({
                 Cor
                 <CategoryColorPicker />
               </div>
-              <button className="h-11 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+              <SubmitButton
+                className="h-11 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+                pendingLabel="Criando..."
+              >
                 Criar categoria
-              </button>
+              </SubmitButton>
             </div>
           </form>
 

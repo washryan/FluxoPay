@@ -6,23 +6,81 @@ export type CreditCard = {
   closing_day: number;
   due_day: number;
   limit_cents: number | null;
+  open_cents: number;
+  available_cents: number | null;
   is_active: boolean;
   created_at: string;
 };
 
+type CardLimitInstallmentRow = {
+  amount_cents: number;
+  credit_card_purchases:
+    | { credit_card_id: string }
+    | { credit_card_id: string }[]
+    | null;
+};
+
 export async function getCreditCards() {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("credit_cards")
-    .select("id, name, closing_day, due_day, limit_cents, is_active, created_at")
-    .order("is_active", { ascending: false })
-    .order("created_at", { ascending: false });
+  const [cardsResult, installmentsResult] = await Promise.all([
+    supabase
+      .from("credit_cards")
+      .select(
+        "id, name, closing_day, due_day, limit_cents, is_active, created_at",
+      )
+      .order("is_active", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("installments")
+      .select(
+        `
+        amount_cents,
+        credit_card_purchases!inner(credit_card_id)
+        `,
+      )
+      .in("status", ["pending", "overdue"]),
+  ]);
 
-  if (error) {
-    return { cards: [] as CreditCard[], error: error.message };
+  if (cardsResult.error || installmentsResult.error) {
+    return {
+      cards: [] as CreditCard[],
+      error: cardsResult.error?.message ?? installmentsResult.error?.message,
+    };
   }
 
-  return { cards: (data ?? []) as CreditCard[], error: null };
+  const openByCard = new Map<string, number>();
+  const installmentRows =
+    (installmentsResult.data ?? []) as unknown as CardLimitInstallmentRow[];
+
+  for (const installment of installmentRows) {
+    const purchase = firstRelation(installment.credit_card_purchases);
+
+    if (!purchase) {
+      continue;
+    }
+
+    openByCard.set(
+      purchase.credit_card_id,
+      (openByCard.get(purchase.credit_card_id) ?? 0) +
+        installment.amount_cents,
+    );
+  }
+
+  return {
+    cards: ((cardsResult.data ?? []) as Omit<CreditCard, "available_cents" | "open_cents">[]).map(
+      (card) => {
+        const openCents = openByCard.get(card.id) ?? 0;
+
+        return {
+          ...card,
+          open_cents: openCents,
+          available_cents:
+            card.limit_cents === null ? null : card.limit_cents - openCents,
+        };
+      },
+    ),
+    error: null,
+  };
 }
 
 export type CreditCardPurchase = {

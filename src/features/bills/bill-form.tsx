@@ -1,5 +1,6 @@
 import type { Category } from "@/features/categories/data";
 import { billStatusLabels, recurrenceLabels } from "@/features/bills/constants";
+import { SubmitButton } from "@/components/submit-button";
 
 type BillFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -106,9 +107,12 @@ export function BillForm({ action, categories }: BillFormProps) {
           />
         </label>
 
-        <button className="h-11 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+        <SubmitButton
+          className="h-11 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+          pendingLabel="Criando..."
+        >
           Criar conta
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );

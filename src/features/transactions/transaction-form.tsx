@@ -1,4 +1,5 @@
 import type { Category } from "@/features/categories/data";
+import { SubmitButton } from "@/components/submit-button";
 import {
   paymentMethodLabels,
   transactionTypeLabels,
@@ -120,9 +121,12 @@ export function TransactionForm({
           />
         </label>
       </div>
-      <button className="mt-5 h-11 whitespace-nowrap rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800">
+      <SubmitButton
+        className="mt-5 h-11 whitespace-nowrap rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800"
+        pendingLabel={transaction ? "Salvando..." : "Criando..."}
+      >
         {submitLabel}
-      </button>
+      </SubmitButton>
     </form>
   );
 }
