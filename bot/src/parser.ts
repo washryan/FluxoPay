@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { normalizeText, parseCurrencyToCents, today } from "./utils";
 
-type Category = {
+export type Category = {
   id: string;
   name: string;
   slug: string;
@@ -15,6 +15,8 @@ export type ParsedTransaction = {
   description: string;
   category_id: string | null;
   category_name: string | null;
+  category_candidate_name: string | null;
+  category_status: "matched" | "missing";
   payment_method:
     | "cash"
     | "pix"
@@ -47,76 +49,6 @@ const expenseWords = [
   "aluguel",
   "conta",
 ];
-
-const categoryKeywordMap: Record<string, string[]> = {
-  alimentacao: [
-    "almoco",
-    "almoço",
-    "cafe",
-    "café",
-    "cafeteria",
-    "comida",
-    "delivery",
-    "ifood",
-    "jantar",
-    "lanche",
-    "padaria",
-    "pizza",
-    "restaurante",
-  ],
-  freela: ["cliente", "freela", "freelance", "projeto"],
-  lazer: [
-    "bar",
-    "cinema",
-    "jogo",
-    "netflix",
-    "passeio",
-    "show",
-    "spotify",
-    "viagem",
-  ],
-  mercado: ["feira", "mercado", "sacolao", "sacolão", "supermercado"],
-  moradia: [
-    "agua",
-    "água",
-    "aluguel",
-    "condominio",
-    "condomínio",
-    "energia",
-    "gas",
-    "gás",
-    "internet",
-    "luz",
-  ],
-  outros: ["outro", "outros"],
-  salario: ["holerite", "pagamento", "salario", "salário", "ordenado"],
-  saude: [
-    "consulta",
-    "dentista",
-    "exame",
-    "farmacia",
-    "farmácia",
-    "medico",
-    "médico",
-    "remedio",
-    "remédio",
-  ],
-  transporte: [
-    "99",
-    "combustivel",
-    "combustível",
-    "estacionamento",
-    "gasolina",
-    "metro",
-    "metrô",
-    "onibus",
-    "ônibus",
-    "passagem",
-    "taxi",
-    "táxi",
-    "uber",
-  ],
-};
 
 const descriptionStopWords = [
   "gastei",
@@ -239,31 +171,6 @@ function buildDescription(message: string, category?: Category | null) {
   return category?.name ?? "Movimentação pelo Telegram";
 }
 
-function findCategoryByKeyword(categories: Category[], normalizedMessage: string) {
-  for (const [slug, keywords] of Object.entries(categoryKeywordMap)) {
-    const hasKeyword = keywords.some((keyword) =>
-      normalizedMessage.includes(normalizeText(keyword)),
-    );
-
-    if (!hasKeyword) {
-      continue;
-    }
-
-    const normalizedSlug = normalizeText(slug);
-    const category = categories.find(
-      (item) =>
-        normalizeText(item.slug) === normalizedSlug ||
-        normalizeText(item.name) === normalizedSlug,
-    );
-
-    if (category) {
-      return category;
-    }
-  }
-
-  return null;
-}
-
 async function findCategory(userId: string, message: string, type: string) {
   const { data } = await supabase
     .from("categories")
@@ -276,7 +183,6 @@ async function findCategory(userId: string, message: string, type: string) {
   return (
     categories.find((category) => normalized.includes(normalizeText(category.name))) ??
     categories.find((category) => normalized.includes(normalizeText(category.slug))) ??
-    findCategoryByKeyword(categories, normalized) ??
     null
   );
 }
@@ -306,6 +212,8 @@ export async function parseFinancialMessage(userId: string, message: string) {
       description,
       category_id: category?.id ?? null,
       category_name: category?.name ?? null,
+      category_candidate_name: category ? null : description,
+      category_status: category ? "matched" : "missing",
       payment_method: detectPaymentMethod(sanitized),
       transaction_date: today(),
     } satisfies ParsedTransaction,

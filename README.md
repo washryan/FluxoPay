@@ -28,7 +28,7 @@ Implementado nesta etapa:
 - Bot Telegram via long polling com vínculo seguro por token.
 - Comandos `/start`, `/vincular`, `/ajuda`, `/saldo` e `/resumo`.
 - Cadastro de entradas/saídas por linguagem natural com confirmação.
-- Parser do Telegram com palavras-chave para categorias comuns.
+- Parser do Telegram integrado às categorias reais do usuário.
 - Worker local para lembretes de contas, faturas e relatorios.
 - Logs de notificacao para evitar alertas repetidos.
 

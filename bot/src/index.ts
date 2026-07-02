@@ -5,6 +5,7 @@ import {
   confirmLatestPending,
   createPendingConfirmation,
   describeParsedTransaction,
+  resolveLatestCategoryPrompt,
 } from "./confirmations";
 import { botConfig } from "./config";
 import { getActiveLink, linkTelegramAccount } from "./links";
@@ -112,10 +113,46 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
+  const categoryResolution = await resolveLatestCategoryPrompt(link, text);
+
+  if (categoryResolution.handled) {
+    await ctx.reply(categoryResolution.message);
+    return;
+  }
+
   const parsed = await parseFinancialMessage(link.user_id, text);
 
   if (parsed.error || !parsed.payload) {
     await ctx.reply(parsed.error ?? "Não consegui interpretar essa mensagem.");
+    return;
+  }
+
+  if (parsed.payload.category_status === "missing") {
+    const suggestedCategory =
+      parsed.payload.category_candidate_name ?? parsed.payload.description;
+    const pendingError = await createPendingConfirmation({
+      link,
+      payload: {
+        kind: "category_resolution",
+        suggested_category_name: suggestedCategory,
+        transaction: parsed.payload,
+      },
+      rawMessage: text,
+    });
+
+    if (pendingError) {
+      await ctx.reply("Não consegui criar a confirmação. Tente novamente.");
+      return;
+    }
+
+    await ctx.reply(
+      [
+        `Não encontrei uma categoria para "${suggestedCategory}".`,
+        "Se você escreveu errado, envie o nome de uma categoria existente.",
+        `Se quiser criar uma nova, responda: criar ${suggestedCategory}.`,
+        "Ou responda: sem categoria.",
+      ].join("\n"),
+    );
     return;
   }
 

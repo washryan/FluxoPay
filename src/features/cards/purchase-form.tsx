@@ -1,5 +1,6 @@
 import type { CreditCard } from "@/features/cards/data";
 import type { Category } from "@/features/categories/data";
+import { SubmitButton } from "@/components/submit-button";
 
 type CreditCardPurchaseFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -116,12 +117,13 @@ export function CreditCardPurchaseForm({
         </div>
       ) : null}
 
-      <button
-        className="mt-5 h-11 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+      <SubmitButton
+        className="mt-5 h-11 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800"
         disabled={!hasCards}
+        pendingLabel="Registrando compra..."
       >
         Registrar compra
-      </button>
+      </SubmitButton>
     </form>
   );
 }

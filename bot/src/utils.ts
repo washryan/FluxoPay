@@ -70,3 +70,11 @@ export function normalizeText(value: string) {
     .toLowerCase()
     .trim();
 }
+
+export function slugify(value: string) {
+  const slug = normalizeText(value)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "categoria";
+}

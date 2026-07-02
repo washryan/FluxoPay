@@ -61,8 +61,10 @@ npm run bot
 - `/ajuda`
 - `/saldo`
 - `/resumo`
-- Parser para entradas e saidas com palavras-chave de categoria.
+- Parser para entradas e saidas usando as categorias reais do usuario.
 - Confirmacao antes de salvar.
+- Fluxo para corrigir, criar ou ignorar categoria quando o bot nao encontra
+  correspondencia.
 - Salvamento em `transactions` com `source = telegram`.
 - Worker local de lembretes e relatorios.
 - Logs em `notification_logs` para evitar alertas duplicados.
@@ -90,6 +92,13 @@ paguei 120 da internet
 ```
 
 O bot responde com a interpretacao e so salva apos `sim`.
+
+Se a categoria nao existir, o bot pergunta antes de salvar. Voce pode responder:
+
+- nome de uma categoria existente;
+- `criar Nome da Categoria`;
+- `sem categoria`;
+- `nao` para cancelar.
 
 ## Seguranca
 

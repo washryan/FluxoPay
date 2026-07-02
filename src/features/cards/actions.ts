@@ -92,67 +92,6 @@ export async function deleteCreditCard(formData: FormData) {
   cardsRedirect({ success: "Cartão excluído." });
 }
 
-function parseIsoDate(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  return { day, monthIndex: month - 1, year };
-}
-
-function daysInMonth(year: number, monthIndex: number) {
-  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-}
-
-function formatInstallmentDueDate(
-  baseYear: number,
-  baseMonthIndex: number,
-  offset: number,
-  dueDay: number,
-) {
-  const monthCursor = baseMonthIndex + offset;
-  const year = baseYear + Math.floor(monthCursor / 12);
-  const monthIndex = ((monthCursor % 12) + 12) % 12;
-  const day = Math.min(dueDay, daysInMonth(year, monthIndex));
-
-  return new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10);
-}
-
-function buildInstallments({
-  closingDay,
-  dueDay,
-  installmentsCount,
-  purchaseDate,
-  purchaseId,
-  totalAmountCents,
-  userId,
-}: {
-  closingDay: number;
-  dueDay: number;
-  installmentsCount: number;
-  purchaseDate: string;
-  purchaseId: string;
-  totalAmountCents: number;
-  userId: string;
-}) {
-  const purchase = parseIsoDate(purchaseDate);
-  const firstDueMonthIndex =
-    purchase.day > closingDay ? purchase.monthIndex + 1 : purchase.monthIndex;
-  const baseAmount = Math.floor(totalAmountCents / installmentsCount);
-  const remainder = totalAmountCents % installmentsCount;
-
-  return Array.from({ length: installmentsCount }, (_, index) => ({
-    user_id: userId,
-    purchase_id: purchaseId,
-    installment_number: index + 1,
-    amount_cents: baseAmount + (index < remainder ? 1 : 0),
-    due_date: formatInstallmentDueDate(
-      purchase.year,
-      firstDueMonthIndex,
-      index,
-      dueDay,
-    ),
-    status: "pending",
-  }));
-}
-
 export async function createCreditCardPurchase(formData: FormData) {
   const parsed = creditCardPurchaseSchema.safeParse({
     credit_card_id: formData.get("credit_card_id"),
@@ -182,62 +121,23 @@ export async function createCreditCardPurchase(formData: FormData) {
     redirect("/login");
   }
 
-  const { data: card, error: cardError } = await supabase
-    .from("credit_cards")
-    .select("id, closing_day, due_day")
-    .eq("id", parsed.data.credit_card_id)
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .single();
+  const { error } = await supabase.rpc(
+    "create_credit_card_purchase_with_installments",
+    {
+      p_category_id: parsed.data.category_id || null,
+      p_credit_card_id: parsed.data.credit_card_id,
+      p_description: parsed.data.description,
+      p_installments_count: parsed.data.installments_count,
+      p_purchase_date: parsed.data.purchase_date,
+      p_total_amount_cents: totalAmountCents,
+    },
+  );
 
-  if (cardError || !card) {
-    cardsRedirect({ error: "Cartão não encontrado ou inativo." });
-  }
-
-  const { data: purchase, error: purchaseError } = await supabase
-    .from("credit_card_purchases")
-    .insert({
-      user_id: user.id,
-      credit_card_id: parsed.data.credit_card_id,
-      category_id: parsed.data.category_id || null,
-      description: parsed.data.description,
-      total_amount_cents: totalAmountCents,
-      purchase_date: parsed.data.purchase_date,
-      installments_count: parsed.data.installments_count,
-      source: "web",
-    })
-    .select("id")
-    .single();
-
-  if (purchaseError || !purchase) {
+  if (error) {
     cardsRedirect({ error: "Não foi possível registrar a compra." });
   }
 
-  const installments = buildInstallments({
-    closingDay: card.closing_day,
-    dueDay: card.due_day,
-    installmentsCount: parsed.data.installments_count,
-    purchaseDate: parsed.data.purchase_date,
-    purchaseId: purchase.id,
-    totalAmountCents,
-    userId: user.id,
-  });
-
-  const { error: installmentsError } = await supabase
-    .from("installments")
-    .insert(installments);
-
-  if (installmentsError) {
-    await supabase
-      .from("credit_card_purchases")
-      .delete()
-      .eq("id", purchase.id)
-      .eq("user_id", user.id);
-    cardsRedirect({ error: "Não foi possível gerar as parcelas." });
-  }
-
   revalidatePath("/cards");
-  revalidatePath("/dashboard");
   cardsRedirect({ success: "Compra parcelada registrada." });
 }
 
