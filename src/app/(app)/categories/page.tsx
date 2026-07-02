@@ -158,8 +158,8 @@ export default async function CategoriesPage({
                 </div>
               ) : (
                 <div className="grid min-h-48 place-items-center p-6 text-center text-sm text-slate-500">
-                  Nenhuma categoria encontrada. Se seu usuário foi criado antes
-                  da migration, crie a primeira categoria manualmente.
+                  Nenhuma categoria encontrada. Crie sua primeira categoria
+                  para organizar entradas e saídas.
                 </div>
               )}
             </div>

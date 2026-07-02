@@ -126,7 +126,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         expense: 0,
       })),
       error:
-        "Não foi possível carregar os dados financeiros. Confira se as migrations foram aplicadas no Supabase.",
+        "Não foi possível carregar os dados financeiros agora. Tente novamente em instantes.",
     };
   }
 

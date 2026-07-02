@@ -1,10 +1,4 @@
-import {
-  BadgeCheck,
-  CalendarCheck2,
-  Landmark,
-  ReceiptText,
-  Trash2,
-} from "lucide-react";
+import { BadgeCheck, CalendarCheck2, ReceiptText, Trash2 } from "lucide-react";
 
 import { ConfirmButton } from "@/components/confirm-button";
 import {
@@ -172,19 +166,19 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
                 <BadgeCheck className="size-5" />
               </span>
-              <h2 className="mt-4 text-lg font-semibold">Persistência ativa</h2>
+              <h2 className="mt-4 text-lg font-semibold">Tudo organizado</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Cartões, compras e parcelas ficam isolados por usuário via RLS.
-                O cadastro usa centavos para evitar erro de ponto flutuante.
+                Acompanhe compras parceladas, vencimentos e faturas em um só
+                lugar, sem perder o histórico do que já foi pago.
               </p>
               <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
                 <div className="flex items-center gap-2 font-semibold text-slate-900">
-                  <Landmark className="size-4" />
-                  Plano gratuito
+                  <BadgeCheck className="size-4" />
+                  Pronto para o dia a dia
                 </div>
                 <p className="mt-2">
-                  Para 3 pessoas, estes registros ocupam pouquíssimo espaço no
-                  Supabase.
+                  Use esta tela para lançar compras no cartão e conferir as
+                  próximas parcelas antes do vencimento.
                 </p>
               </div>
             </aside>

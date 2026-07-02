@@ -46,13 +46,18 @@ export default async function AppLayout({
       <div className="mx-auto flex min-h-screen w-full max-w-[1500px] flex-col lg:flex-row">
         <aside className="shrink-0 border-b border-white/10 bg-slate-950/80 p-4 backdrop-blur lg:w-72 lg:border-b-0 lg:border-r lg:p-6">
           <div className="flex items-center justify-between gap-4 lg:block">
-            <Link href="/dashboard" className="block">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                FluxoPay
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Workspace financeiro privado
-              </p>
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <span className="grid size-11 place-items-center rounded-2xl bg-[linear-gradient(135deg,#064e3b,#10b981_60%,#bef264)] text-lg font-black text-white shadow-lg shadow-emerald-950/30">
+                F
+              </span>
+              <span>
+                <span className="block text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
+                  FluxoPay
+                </span>
+                <span className="mt-1 block text-xs text-slate-400">
+                  Finanças pessoais
+                </span>
+              </span>
             </Link>
             <form action={signOut} className="lg:hidden">
               <button className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200">

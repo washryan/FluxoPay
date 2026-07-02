@@ -10,6 +10,21 @@ import { getDashboardData } from "@/features/dashboard/data";
 import { MonthlyChart } from "@/features/dashboard/monthly-chart";
 import { formatCurrencyFromCents, formatDate } from "@/lib/formatters";
 
+const cardToneClasses = {
+  emerald: {
+    icon: "bg-emerald-50 text-emerald-700",
+    value: "text-emerald-700",
+  },
+  red: {
+    icon: "bg-red-50 text-red-700",
+    value: "text-red-600",
+  },
+  slate: {
+    icon: "bg-slate-100 text-slate-800",
+    value: "text-slate-950",
+  },
+};
+
 export default async function DashboardPage() {
   const dashboard = await getDashboardData();
   const cards = [
@@ -18,20 +33,23 @@ export default async function DashboardPage() {
       value: formatCurrencyFromCents(dashboard.currentMonth.incomeCents),
       helper: `${dashboard.currentMonth.transactionsCount} movimentações no mês`,
       icon: ArrowUpRight,
+      tone: "emerald",
     },
     {
       label: "Saídas do mês",
       value: formatCurrencyFromCents(dashboard.currentMonth.expenseCents),
       helper: "Somatório das despesas registradas",
       icon: ArrowDownRight,
+      tone: "red",
     },
     {
       label: "Saldo",
       value: formatCurrencyFromCents(dashboard.currentMonth.balanceCents),
       helper: "Entradas menos saídas do mês",
       icon: CalendarClock,
+      tone: "slate",
     },
-  ];
+  ] as const;
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -42,9 +60,8 @@ export default async function DashboardPage() {
               Visão geral das suas finanças.
             </h1>
             <p className="text-sm leading-6 text-emerald-50 md:text-base">
-              Os números abaixo são carregados do Supabase respeitando RLS por
-              usuário. Quando você cadastrar transações, o painel atualiza com
-              totais, categorias e contas próximas.
+              Acompanhe entradas, saídas, saldo do mês, contas próximas e
+              categorias que mais pesam no orçamento.
             </p>
           </div>
         </header>
@@ -60,25 +77,31 @@ export default async function DashboardPage() {
         ) : null}
 
         <section className="grid gap-4 md:grid-cols-3">
-          {cards.map((card) => (
-            <article
-              className="interactive-card animate-rise rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
-              key={card.label}
-            >
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-medium text-slate-500">
-                  {card.label}
+          {cards.map((card) => {
+            const toneClasses = cardToneClasses[card.tone];
+
+            return (
+              <article
+                className="interactive-card animate-rise rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
+                key={card.label}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-medium text-slate-500">
+                    {card.label}
+                  </p>
+                  <span className={`rounded-2xl p-2 ${toneClasses.icon}`}>
+                    <card.icon className="size-5" />
+                  </span>
+                </div>
+                <p
+                  className={`mt-4 text-3xl font-semibold tracking-tight ${toneClasses.value}`}
+                >
+                  {card.value}
                 </p>
-                <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
-                  <card.icon className="size-5" />
-                </span>
-              </div>
-              <p className="mt-4 text-3xl font-semibold tracking-tight">
-                {card.value}
-              </p>
-              <p className="mt-2 text-sm text-slate-500">{card.helper}</p>
-            </article>
-          ))}
+                <p className="mt-2 text-sm text-slate-500">{card.helper}</p>
+              </article>
+            );
+          })}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -90,8 +113,8 @@ export default async function DashboardPage() {
                   Entradas e saídas dos últimos 6 meses.
                 </p>
               </div>
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                Recharts
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                Últimos 6 meses
               </span>
             </div>
             <MonthlyChart data={dashboard.trend} />

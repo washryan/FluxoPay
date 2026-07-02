@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const principles = [
-  "RLS por usuário desde a primeira migration",
-  "Service role restrita ao bot local",
-  "Next.js na Vercel Free e Supabase Free",
+  "Ambiente privado por usuário",
+  "Registro rápido pelo Telegram",
+  "Controle de contas e cartões",
 ];
 
 export default function Home() {
@@ -37,7 +37,7 @@ export default function Home() {
             </div>
             <div className="space-y-6">
               <h1 className="text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-                Finanças pessoais com arquitetura de SaaS de verdade.
+                Finanças pessoais para acompanhar o dinheiro sem complicação.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-slate-600">
                 Um painel privado para organizar entradas, saídas, contas,
@@ -93,7 +93,7 @@ export default function Home() {
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
                   Telegram: gastei 18 no lanche vira uma confirmação antes
-                  de salvar no banco.
+                  de entrar no seu histórico.
                 </div>
               </div>
             </div>

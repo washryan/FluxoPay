@@ -41,8 +41,8 @@ export default async function EditTransactionPage({
             Editar transação
           </h1>
           <p className="mt-4 text-sm leading-6 text-slate-600">
-            Ajuste os dados da movimentação. A atualização respeita RLS e só
-            afeta registros do usuário logado.
+            Ajuste os dados da movimentação e mantenha seu histórico financeiro
+            sempre correto.
           </p>
         </header>
 

@@ -32,16 +32,16 @@ export function TransactionForm({
   return (
     <form
       action={action}
-      className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
+      className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
     >
       <h2 className="text-lg font-semibold">
         {transaction ? "Editar transação" : "Nova transação"}
       </h2>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Tipo
           <select
-            className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            className="h-11 min-w-0 w-full rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             name="type"
             defaultValue={transaction?.type ?? "expense"}
           >
@@ -53,10 +53,10 @@ export function TransactionForm({
           </select>
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Valor
           <input
-            className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            className="h-11 min-w-0 w-full rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             inputMode="decimal"
             name="amount"
             placeholder="Ex: 25,90"
@@ -65,10 +65,10 @@ export function TransactionForm({
           />
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700 md:col-span-2">
           Descrição
           <input
-            className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            className="h-11 min-w-0 w-full rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             name="description"
             placeholder="Ex: Mercado, salário, internet"
             required
@@ -76,10 +76,10 @@ export function TransactionForm({
           />
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Categoria
           <select
-            className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            className="h-11 min-w-0 w-full rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             name="category_id"
             defaultValue={transaction?.category_id ?? ""}
           >
@@ -92,10 +92,10 @@ export function TransactionForm({
           </select>
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Forma de pagamento
           <select
-            className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            className="h-11 min-w-0 w-full rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             name="payment_method"
             defaultValue={transaction?.payment_method ?? "pix"}
           >
@@ -107,10 +107,10 @@ export function TransactionForm({
           </select>
         </label>
 
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Data
           <input
-            className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            className="h-11 min-w-0 w-full rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             name="transaction_date"
             type="date"
             required

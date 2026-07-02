@@ -1,4 +1,4 @@
-import { Bot, ShieldCheck, ServerCog } from "lucide-react";
+import { MessageCircle, ShieldCheck } from "lucide-react";
 
 import { ConfirmButton } from "@/components/confirm-button";
 import { revokeTelegramLink } from "@/features/telegram/actions";
@@ -45,8 +45,8 @@ export default async function TelegramSettingsPage({
             Conecte sua conta ao bot.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-            O site gera um token temporário. O bot, rodando na sua máquina 24h,
-            recebe esse token pelo Telegram e ativa o vínculo no Supabase.
+            Use o Telegram para registrar movimentações, consultar saldo e
+            receber avisos importantes sem abrir o painel.
           </p>
         </header>
 
@@ -70,7 +70,7 @@ export default async function TelegramSettingsPage({
               <div>
                 <h2 className="text-lg font-semibold">Vínculos recentes</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  O vínculo ativo é o que o bot usa para salvar movimentações.
+                  Gerencie os dispositivos autorizados a conversar com o bot.
                 </p>
               </div>
               <ShieldCheck className="size-5 text-emerald-600" />
@@ -134,31 +134,25 @@ export default async function TelegramSettingsPage({
           </article>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2">
           <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <Bot className="size-5 text-emerald-600" />
+            <MessageCircle className="size-5 text-emerald-600" />
             <h2 className="mt-4 font-semibold text-slate-950">
-              Bot em outra máquina
+              Registre pelo chat
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Basta clonar o projeto nela, preencher `.env.bot` e rodar
-              `npm run bot`. Não precisa IP público.
-            </p>
-          </article>
-          <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <ServerCog className="size-5 text-slate-700" />
-            <h2 className="mt-4 font-semibold text-slate-950">Long polling</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              A máquina faz conexões de saída para Telegram e Supabase. O bot
-              pode atender todos os usuários vinculados.
+              Envie mensagens como <strong>gastei 25 no mercado</strong> e
+              confirme antes de salvar no FluxoPay.
             </p>
           </article>
           <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
             <ShieldCheck className="size-5 text-emerald-600" />
-            <h2 className="mt-4 font-semibold text-slate-950">Service role</h2>
+            <h2 className="mt-4 font-semibold text-slate-950">
+              Você mantém o controle
+            </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              A chave elevada fica somente na máquina do bot, nunca no frontend
-              ou na Vercel do site.
+              O bot só salva movimentações após confirmação e você pode revogar
+              o vínculo a qualquer momento.
             </p>
           </article>
         </section>
