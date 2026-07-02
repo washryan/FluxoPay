@@ -223,8 +223,10 @@ export function InvoicePaymentDialog({
                     value="yes"
                   />
                   <span>
-                    Se este for um pagamento parcial, adicionar o restante na
-                    próxima fatura como &quot;Restante do mês passado&quot;.
+                    Se este for um pagamento parcial, marcar esta opção move o
+                    restante para a próxima fatura como &quot;Restante do mês
+                    passado&quot;. Se deixar desmarcado, o restante continua nesta
+                    mesma fatura.
                   </span>
                 </label>
               </div>

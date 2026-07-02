@@ -630,11 +630,17 @@ function monthRange(month: string) {
 type InvoicePaymentRow = {
   id: string;
   user_id: string;
+  purchase_id: string;
+  installment_number: number;
   amount_cents: number;
+  due_date: string;
   status: "pending" | "paid" | "overdue" | "cancelled";
   credit_card_purchases:
     | {
         credit_card_id: string;
+        category_id: string | null;
+        description: string;
+        purchase_date: string;
         credit_cards:
           | { name: string; due_day: number }
           | { name: string; due_day: number }[]
@@ -642,6 +648,9 @@ type InvoicePaymentRow = {
       }
     | {
         credit_card_id: string;
+        category_id: string | null;
+        description: string;
+        purchase_date: string;
         credit_cards:
           | { name: string; due_day: number }
           | { name: string; due_day: number }[]
@@ -696,10 +705,16 @@ export async function markInvoiceAsPaid(formData: FormData) {
       `
       id,
       user_id,
+      purchase_id,
+      installment_number,
       amount_cents,
+      due_date,
       status,
       credit_card_purchases!inner(
         credit_card_id,
+        category_id,
+        description,
+        purchase_date,
         credit_cards(name, due_day)
       )
       `,
@@ -708,7 +723,9 @@ export async function markInvoiceAsPaid(formData: FormData) {
     .eq("credit_card_purchases.credit_card_id", cardId)
     .gte("due_date", range.start)
     .lt("due_date", range.end)
-    .in("status", ["pending", "overdue"]);
+    .in("status", ["pending", "overdue"])
+    .order("due_date", { ascending: true })
+    .order("created_at", { ascending: true });
 
   const installments = (data ?? []) as unknown as InvoicePaymentRow[];
 
@@ -747,16 +764,8 @@ export async function markInvoiceAsPaid(formData: FormData) {
 
   const remainingCents = openCents - paidCents;
   const isPartialPayment = remainingCents > 0;
-
-  if (
-    isPartialPayment &&
-    parsed.data.carry_remaining_to_next_invoice !== "yes"
-  ) {
-    cardsRedirect({
-      error:
-        "Confirme que deseja adicionar o restante na próxima fatura para registrar um pagamento parcial.",
-    });
-  }
+  const shouldCarryRemaining =
+    parsed.data.carry_remaining_to_next_invoice === "yes";
 
   const interestCents = Math.max(0, paidCents - openCents);
   const paymentDescription =
@@ -778,7 +787,9 @@ export async function markInvoiceAsPaid(formData: FormData) {
       source: "web",
       notes:
         isPartialPayment
-          ? `Fatura em aberto: ${openCents} centavos. Restante transferido: ${remainingCents} centavos.`
+          ? shouldCarryRemaining
+            ? `Fatura em aberto: ${openCents} centavos. Restante transferido: ${remainingCents} centavos.`
+            : `Fatura em aberto: ${openCents} centavos. Restante mantido na mesma fatura: ${remainingCents} centavos.`
           : interestCents > 0
           ? `Fatura em aberto: ${openCents} centavos. Juros/taxas: ${interestCents} centavos.`
           : null,
@@ -861,7 +872,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
     }
   }
 
-  if (isPartialPayment) {
+  if (isPartialPayment && shouldCarryRemaining) {
     const cardDueDay = card?.due_day;
 
     if (!cardDueDay) {
@@ -988,44 +999,169 @@ export async function markInvoiceAsPaid(formData: FormData) {
     }
   }
 
-  const ids = installments.map((installment) => installment.id);
-  const { error: updateError } = await supabase
-    .from("installments")
-    .update({
-      status: "paid",
-      paid_transaction_id: transaction.id,
-    })
-    .in("id", ids)
-    .eq("user_id", user.id);
+  if (isPartialPayment && !shouldCarryRemaining) {
+    let paymentLeftCents = paidCents;
 
-  if (updateError) {
-    if (carriedPurchaseId) {
-      await supabase
-        .from("credit_card_purchases")
-        .delete()
-        .eq("id", carriedPurchaseId)
+    for (const installment of installments) {
+      if (paymentLeftCents <= 0) {
+        break;
+      }
+
+      const installmentPurchase = firstRelation(
+        installment.credit_card_purchases,
+      );
+
+      if (!installmentPurchase) {
+        await supabase.rpc("revoke_invoice_payment", {
+          p_transaction_id: transaction.id,
+        });
+        cardsRedirect({
+          error: "Não foi possível identificar a compra da parcela.",
+        });
+      }
+
+      if (paymentLeftCents >= installment.amount_cents) {
+        const { error: paidInstallmentError } = await supabase
+          .from("installments")
+          .update({
+            status: "paid",
+            paid_transaction_id: transaction.id,
+          })
+          .eq("id", installment.id)
+          .eq("user_id", user.id);
+
+        if (paidInstallmentError) {
+          await supabase.rpc("revoke_invoice_payment", {
+            p_transaction_id: transaction.id,
+          });
+          cardsRedirect({
+            error: "Não foi possível abater o pagamento parcial.",
+          });
+        }
+
+        paymentLeftCents -= installment.amount_cents;
+        continue;
+      }
+
+      const paidPortionCents = paymentLeftCents;
+      const remainingPortionCents =
+        installment.amount_cents - paidPortionCents;
+      const { error: splitPaidError } = await supabase
+        .from("installments")
+        .update({
+          amount_cents: paidPortionCents,
+          partial_payment_original_amount_cents: installment.amount_cents,
+          status: "paid",
+          paid_transaction_id: transaction.id,
+        })
+        .eq("id", installment.id)
         .eq("user_id", user.id);
-    }
 
-    if (transferredPurchaseId) {
-      await supabase
-        .from("credit_card_purchases")
-        .delete()
-        .eq("id", transferredPurchaseId)
-        .eq("user_id", user.id);
-    }
+      if (splitPaidError) {
+        await supabase.rpc("revoke_invoice_payment", {
+          p_transaction_id: transaction.id,
+        });
+        cardsRedirect({
+          error: "Não foi possível dividir a parcela parcialmente paga.",
+        });
+      }
 
-    await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", transaction.id)
+      const { data: remainingPurchase, error: remainingPurchaseError } =
+        await supabase
+          .from("credit_card_purchases")
+          .insert({
+            user_id: user.id,
+            credit_card_id: cardId,
+            category_id: installmentPurchase.category_id,
+            description: `Restante: ${installmentPurchase.description}`,
+            total_amount_cents: remainingPortionCents,
+            purchase_date: installmentPurchase.purchase_date,
+            installments_count: 1,
+            source: "web",
+            skip_transaction_on_payment: false,
+            source_invoice_transaction_id: transaction.id,
+          })
+          .select("id")
+          .single();
+
+      if (remainingPurchaseError || !remainingPurchase) {
+        await supabase.rpc("revoke_invoice_payment", {
+          p_transaction_id: transaction.id,
+        });
+        cardsRedirect({
+          error: "Não foi possível manter o restante na fatura atual.",
+        });
+      }
+
+      const { error: remainingInstallmentError } = await supabase
+        .from("installments")
+        .insert({
+          user_id: user.id,
+          purchase_id: remainingPurchase.id,
+          installment_number: 1,
+          amount_cents: remainingPortionCents,
+          due_date: installment.due_date,
+          status:
+            installment.due_date < todayInSaoPaulo() ? "overdue" : "pending",
+        });
+
+      if (remainingInstallmentError) {
+        await supabase.rpc("revoke_invoice_payment", {
+          p_transaction_id: transaction.id,
+        });
+        cardsRedirect({
+          error: "Não foi possível criar o restante na fatura atual.",
+        });
+      }
+
+      paymentLeftCents = 0;
+    }
+  } else {
+    const ids = installments.map((installment) => installment.id);
+    const { error: updateError } = await supabase
+      .from("installments")
+      .update({
+        status: "paid",
+        paid_transaction_id: transaction.id,
+      })
+      .in("id", ids)
       .eq("user_id", user.id);
-    cardsRedirect({ error: "Não foi possível marcar a fatura como paga." });
+
+    if (updateError) {
+      if (carriedPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", carriedPurchaseId)
+          .eq("user_id", user.id);
+      }
+
+      if (transferredPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", transferredPurchaseId)
+          .eq("user_id", user.id);
+      }
+
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({ error: "Não foi possível marcar a fatura como paga." });
+    }
   }
 
   revalidatePath("/cards");
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
-  cardsRedirect({ success: "Fatura marcada como paga." });
+  cardsRedirect({
+    success: isPartialPayment
+      ? shouldCarryRemaining
+        ? "Pagamento parcial registrado. O restante foi enviado para a próxima fatura."
+        : "Pagamento parcial registrado. O restante continua nesta fatura."
+      : "Fatura marcada como paga.",
+  });
 }
