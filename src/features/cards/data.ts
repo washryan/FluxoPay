@@ -283,6 +283,7 @@ export type CreditCardInvoice = {
   total_cents: number;
   open_cents: number;
   paid_cents: number;
+  interest_cents: number;
   payment_transaction_id: string | null;
   status: "pending" | "paid" | "overdue" | "cancelled";
   items: CreditCardInvoiceItem[];
@@ -347,6 +348,11 @@ type SourceInvoiceDetailRow = {
         credit_cards: { name: string } | { name: string }[] | null;
       }[]
     | null;
+};
+
+type PaymentTransactionRow = {
+  id: string;
+  amount_cents: number;
 };
 
 function invoiceStatus(
@@ -419,6 +425,10 @@ export async function getCreditCardInvoices() {
 
   const grouped = new Map<string, CreditCardInvoice>();
   const rows = (data ?? []) as unknown as InvoiceInstallmentRow[];
+  const paidTransactionIds = Array.from(
+    new Set(rows.map((installment) => installment.paid_transaction_id).filter(Boolean)),
+  ) as string[];
+  const paymentAmountById = new Map<string, number>();
   const sourceTransactionIds = Array.from(
     new Set(
       rows
@@ -434,6 +444,24 @@ export async function getCreditCardInvoices() {
     string,
     CreditCardInvoicePaymentDetail[]
   >();
+
+  if (paidTransactionIds.length > 0) {
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("transactions")
+      .select("id, amount_cents")
+      .in("id", paidTransactionIds);
+
+    if (paymentError) {
+      return {
+        error: paymentError.message,
+        invoices: [] as CreditCardInvoice[],
+      };
+    }
+
+    for (const transaction of (paymentData ?? []) as PaymentTransactionRow[]) {
+      paymentAmountById.set(transaction.id, transaction.amount_cents);
+    }
+  }
 
   if (sourceTransactionIds.length > 0) {
     const { data: detailsData, error: detailsError } = await supabase
@@ -507,6 +535,7 @@ export async function getCreditCardInvoices() {
       total_cents: 0,
       open_cents: 0,
       paid_cents: 0,
+      interest_cents: 0,
       payment_transaction_id: null,
       status: "pending" as const,
       items: [],
@@ -549,12 +578,21 @@ export async function getCreditCardInvoices() {
   }
 
   const invoices = Array.from(grouped.values())
-    .map((invoice) => ({
-      ...invoice,
-      items: invoice.items.sort((a, b) => a.due_date.localeCompare(b.due_date)),
-      payment_transaction_id: invoicePaymentTransactionId(invoice.items),
-      status: invoiceStatus(invoice.items),
-    }))
+    .map((invoice) => {
+      const paymentTransactionId = invoicePaymentTransactionId(invoice.items);
+      const paidCents = paymentTransactionId
+        ? (paymentAmountById.get(paymentTransactionId) ?? invoice.paid_cents)
+        : invoice.paid_cents;
+
+      return {
+        ...invoice,
+        paid_cents: paidCents,
+        interest_cents: Math.max(0, paidCents - invoice.total_cents),
+        items: invoice.items.sort((a, b) => a.due_date.localeCompare(b.due_date)),
+        payment_transaction_id: paymentTransactionId,
+        status: invoiceStatus(invoice.items),
+      };
+    })
     .sort((a, b) => b.invoice_month.localeCompare(a.invoice_month));
 
   return { error: null, invoices };

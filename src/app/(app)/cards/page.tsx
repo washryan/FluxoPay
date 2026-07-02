@@ -360,7 +360,13 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-3">
+                  <div
+                    className={`grid gap-3 border-t border-slate-200 p-4 ${
+                      invoice.interest_cents > 0
+                        ? "md:grid-cols-4"
+                        : "md:grid-cols-3"
+                    }`}
+                  >
                     <div className="rounded-2xl bg-white p-3">
                       <p className="text-xs text-slate-500">Total da fatura</p>
                       <p className="mt-1 font-semibold text-slate-950">
@@ -373,6 +379,14 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                         {formatCurrencyFromCents(invoice.paid_cents)}
                       </p>
                     </div>
+                    {invoice.interest_cents > 0 ? (
+                      <div className="rounded-2xl bg-white p-3">
+                        <p className="text-xs text-slate-500">Juros/taxas</p>
+                        <p className="mt-1 font-semibold text-orange-700">
+                          {formatCurrencyFromCents(invoice.interest_cents)}
+                        </p>
+                      </div>
+                    ) : null}
                     <div className="rounded-2xl bg-white p-3">
                       <p className="text-xs text-slate-500">Itens</p>
                       <p className="mt-1 font-semibold text-slate-950">
