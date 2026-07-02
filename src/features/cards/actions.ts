@@ -201,6 +201,7 @@ export async function createCreditCardPurchase(formData: FormData) {
   }
 
   revalidatePath("/cards");
+  revalidatePath("/resumo");
   cardsRedirect({ success: "Compra parcelada registrada." });
 }
 
@@ -223,6 +224,7 @@ export async function deleteCreditCardPurchase(formData: FormData) {
 
   revalidatePath("/cards");
   revalidatePath("/dashboard");
+  revalidatePath("/resumo");
   cardsRedirect({ success: "Compra excluída." });
 }
 
@@ -255,7 +257,51 @@ export async function revokeInvoicePayment(formData: FormData) {
   revalidatePath("/cards");
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
+  revalidatePath("/resumo");
   cardsRedirect({ success: "Pagamento revogado. A fatura voltou para em aberto." });
+}
+
+export async function moveInstallmentInvoice(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const direction = String(formData.get("direction") ?? "");
+
+  if (!id || (direction !== "previous" && direction !== "next")) {
+    cardsRedirect({ error: "Movimentação de parcela inválida." });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase.rpc("move_installment_to_adjacent_invoice", {
+    p_direction: direction,
+    p_installment_id: id,
+  });
+
+  if (error) {
+    const message = error.message.includes("target_invoice_already_paid")
+      ? "A fatura de destino já está paga. Revogue o pagamento antes de mover uma parcela para ela."
+      : error.message.includes("installment_not_open")
+        ? "Só é possível mover parcelas em aberto ou atrasadas."
+        : "Não foi possível mover a parcela para outra fatura.";
+
+    cardsRedirect({ error: message });
+  }
+
+  revalidatePath("/cards");
+  revalidatePath("/dashboard");
+  revalidatePath("/resumo");
+  cardsRedirect({
+    success:
+      direction === "previous"
+        ? "Parcela adiantada para a fatura anterior."
+        : "Parcela atrasada para a próxima fatura.",
+  });
 }
 
 type InstallmentPaymentRow = {
@@ -360,6 +406,7 @@ export async function markInstallmentAsPaid(formData: FormData) {
 
     revalidatePath("/cards");
     revalidatePath("/dashboard");
+    revalidatePath("/resumo");
     cardsRedirect({
       success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
     });
@@ -413,6 +460,7 @@ export async function markInstallmentAsPaid(formData: FormData) {
   revalidatePath("/cards");
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
+  revalidatePath("/resumo");
   cardsRedirect({
     success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
   });
@@ -677,5 +725,6 @@ export async function markInvoiceAsPaid(formData: FormData) {
   revalidatePath("/cards");
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
+  revalidatePath("/resumo");
   cardsRedirect({ success: "Fatura marcada como paga." });
 }

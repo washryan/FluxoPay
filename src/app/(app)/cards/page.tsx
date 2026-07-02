@@ -8,6 +8,7 @@ import {
   deleteCreditCardPurchase,
   markInstallmentAsPaid,
   markInvoiceAsPaid,
+  moveInstallmentInvoice,
   revokeInvoicePayment,
 } from "@/features/cards/actions";
 import { CustomCardForm } from "@/features/cards/card-form";
@@ -433,17 +434,49 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
 
                           {item.status !== "paid" &&
                           item.status !== "cancelled" ? (
-                            <form action={markInstallmentAsPaid}>
-                              <input name="id" type="hidden" value={item.id} />
-                              <ConfirmButton
-                                className="h-9"
-                                message={`Pagar esta parcela de ${formatCurrencyFromCents(item.amount_cents)}?`}
-                                pendingLabel="Pagando..."
-                                variant="emerald"
-                              >
-                                Pagar parcela
-                              </ConfirmButton>
-                            </form>
+                            <div className="flex flex-wrap justify-start gap-2 md:justify-end">
+                              <form action={moveInstallmentInvoice}>
+                                <input name="id" type="hidden" value={item.id} />
+                                <input
+                                  name="direction"
+                                  type="hidden"
+                                  value="previous"
+                                />
+                                <ConfirmButton
+                                  className="h-9"
+                                  message="Adiantar esta parcela para a fatura anterior?"
+                                  pendingLabel="Movendo..."
+                                >
+                                  Adiantar
+                                </ConfirmButton>
+                              </form>
+                              <form action={moveInstallmentInvoice}>
+                                <input name="id" type="hidden" value={item.id} />
+                                <input
+                                  name="direction"
+                                  type="hidden"
+                                  value="next"
+                                />
+                                <ConfirmButton
+                                  className="h-9"
+                                  message="Atrasar esta parcela para a próxima fatura?"
+                                  pendingLabel="Movendo..."
+                                >
+                                  Atrasar
+                                </ConfirmButton>
+                              </form>
+                              <form action={markInstallmentAsPaid}>
+                                <input name="id" type="hidden" value={item.id} />
+                                <ConfirmButton
+                                  className="h-9"
+                                  message={`Pagar esta parcela de ${formatCurrencyFromCents(item.amount_cents)}?`}
+                                  pendingLabel="Pagando..."
+                                  variant="emerald"
+                                >
+                                  Pagar
+                                </ConfirmButton>
+                              </form>
+                            </div>
                           ) : item.paid_transaction_id &&
                             !invoice.payment_transaction_id ? (
                             <form action={revokeInvoicePayment}>

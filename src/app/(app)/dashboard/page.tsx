@@ -4,6 +4,8 @@ import {
   ArrowUpRight,
   Bot,
   CalendarClock,
+  CreditCard,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -24,6 +26,10 @@ const cardToneClasses = {
   slate: {
     icon: "bg-slate-100 text-slate-800",
     value: "text-slate-950",
+  },
+  amber: {
+    icon: "bg-amber-50 text-amber-700",
+    value: "text-amber-700",
   },
 };
 
@@ -110,7 +116,53 @@ export default async function DashboardPage({
       icon: ArrowDownRight,
       tone: "red",
     },
-  ] as const;
+    {
+      label: "Saldo realizado",
+      value: formatCurrencyFromCents(
+        dashboard.financialPosition.realizedBalanceCents,
+      ),
+      helper: "Transações desde o início até hoje",
+      icon: Wallet,
+      tone:
+        dashboard.financialPosition.realizedBalanceCents >= 0
+          ? "slate"
+          : "red",
+    },
+    {
+      label: "Saldo projetado",
+      value: formatCurrencyFromCents(
+        dashboard.financialPosition.projectedBalanceCents,
+      ),
+      helper: "Realizado menos cartões e contas em aberto",
+      icon: CalendarClock,
+      tone:
+        dashboard.financialPosition.projectedBalanceCents >= 0
+          ? "emerald"
+          : "red",
+    },
+    {
+      label: "Em aberto nos cartões",
+      value: formatCurrencyFromCents(dashboard.financialPosition.openCardsCents),
+      helper: "Parcelas pendentes e atrasadas",
+      icon: CreditCard,
+      tone: "amber",
+    },
+    {
+      label: "Contas pendentes",
+      value: formatCurrencyFromCents(
+        dashboard.financialPosition.pendingBillsCents,
+      ),
+      helper: "Contas ainda em aberto",
+      icon: CalendarClock,
+      tone: "slate",
+    },
+  ] satisfies Array<{
+    label: string;
+    value: string;
+    helper: string;
+    icon: typeof ArrowUpRight;
+    tone: keyof typeof cardToneClasses;
+  }>;
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -121,8 +173,8 @@ export default async function DashboardPage({
               Visão geral das suas finanças.
             </h1>
             <p className="text-sm leading-6 text-emerald-50 md:text-base">
-              Acompanhe entradas, saídas, saldo do mês, contas próximas e
-              categorias que mais pesam no orçamento.
+              Acompanhe entradas, saídas, saldo realizado, saldo projetado,
+              contas próximas e categorias que mais pesam no orçamento.
             </p>
           </div>
         </header>
@@ -137,7 +189,7 @@ export default async function DashboardPage({
           </div>
         ) : null}
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((card) => {
             const toneClasses = cardToneClasses[card.tone];
 
@@ -163,35 +215,38 @@ export default async function DashboardPage({
               </article>
             );
           })}
-          <article className="interactive-card animate-rise rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-medium text-slate-500">Saldo</p>
-              <span className="rounded-2xl bg-slate-100 p-2 text-slate-800">
-                <CalendarClock className="size-5" />
-              </span>
+        </section>
+
+        <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Leitura rápida
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm text-slate-500">Resultado do mês</p>
+              <p className="mt-2 text-xl font-semibold text-slate-950">
+                {formatCurrencyFromCents(dashboard.currentMonth.balanceCents)}
+              </p>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Mês atual
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  {formatCurrencyFromCents(dashboard.currentMonth.balanceCents)}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-emerald-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700/70">
-                  Total disponível
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-800">
-                  {formatCurrencyFromCents(dashboard.lifetime.balanceCents)}
-                </p>
-              </div>
+            <div className="rounded-2xl bg-amber-50 p-4">
+              <p className="text-sm text-amber-800">Compromissos em aberto</p>
+              <p className="mt-2 text-xl font-semibold text-amber-900">
+                {formatCurrencyFromCents(
+                  dashboard.financialPosition.openCardsCents +
+                    dashboard.financialPosition.pendingBillsCents,
+                )}
+              </p>
             </div>
-            <p className="mt-3 text-sm text-slate-500">
-              Total considera transações desde o início até hoje.
-            </p>
-          </article>
+            <div className="rounded-2xl bg-emerald-50 p-4">
+              <p className="text-sm text-emerald-800">Relatório mensal</p>
+              <Link
+                className="mt-2 inline-flex rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+                href="/resumo"
+              >
+                Abrir resumo
+              </Link>
+            </div>
+          </div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1fr_360px]">

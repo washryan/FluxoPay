@@ -22,6 +22,10 @@ type BillRow = {
   status: "pending" | "paid" | "overdue" | "cancelled";
 };
 
+type CardInstallmentRow = {
+  amount_cents: number;
+};
+
 type TrendMonth = {
   key: string;
   label: string;
@@ -47,6 +51,12 @@ export type DashboardData = {
     incomeCents: number;
     expenseCents: number;
     balanceCents: number;
+  };
+  financialPosition: {
+    realizedBalanceCents: number;
+    projectedBalanceCents: number;
+    openCardsCents: number;
+    pendingBillsCents: number;
   };
   upcomingBills: BillRow[];
   topExpenseCategories: Array<{
@@ -175,7 +185,13 @@ export async function getDashboardData({
   const expenseRange = normalizeExpenseRange(rawExpenseRange);
   const trendRange = normalizeTrendRange(rawTrendRange);
 
-  const [transactionsResult, billsResult, categoriesResult] = await Promise.all([
+  const [
+    transactionsResult,
+    upcomingBillsResult,
+    pendingBillsResult,
+    cardInstallmentsResult,
+    categoriesResult,
+  ] = await Promise.all([
     supabase
       .from("transactions")
       .select("type, amount_cents, transaction_date, category_id")
@@ -187,11 +203,23 @@ export async function getDashboardData({
       .lte("due_date", toDateInput(addDays(today, 7)))
       .order("due_date", { ascending: true })
       .limit(5),
+    supabase
+      .from("bills")
+      .select("amount_cents")
+      .in("status", ["pending", "overdue"]),
+    supabase
+      .from("installments")
+      .select("amount_cents")
+      .in("status", ["pending", "overdue"]),
     supabase.from("categories").select("id, name, color"),
   ]);
 
   const firstError =
-    transactionsResult.error ?? billsResult.error ?? categoriesResult.error;
+    transactionsResult.error ??
+    upcomingBillsResult.error ??
+    pendingBillsResult.error ??
+    cardInstallmentsResult.error ??
+    categoriesResult.error;
   const fallbackTrendMonths = getTrendMonths({
     referenceDate: today,
     range: trendRange,
@@ -211,6 +239,12 @@ export async function getDashboardData({
         expenseCents: 0,
         balanceCents: 0,
       },
+      financialPosition: {
+        realizedBalanceCents: 0,
+        projectedBalanceCents: 0,
+        openCardsCents: 0,
+        pendingBillsCents: 0,
+      },
       upcomingBills: [],
       topExpenseCategories: [],
       topExpenseRangeLabel: "mês atual",
@@ -226,7 +260,13 @@ export async function getDashboardData({
   }
 
   const transactions = (transactionsResult.data ?? []) as TransactionRow[];
-  const bills = (billsResult.data ?? []) as BillRow[];
+  const bills = (upcomingBillsResult.data ?? []) as BillRow[];
+  const pendingBills = (pendingBillsResult.data ?? []) as Pick<
+    BillRow,
+    "amount_cents"
+  >[];
+  const cardInstallments =
+    (cardInstallmentsResult.data ?? []) as CardInstallmentRow[];
   const categories = (categoriesResult.data ?? []) as CategoryRow[];
   const categoriesById = new Map(
     categories.map((category) => [category.id, category]),
@@ -252,6 +292,15 @@ export async function getDashboardData({
   const lifetimeExpenseCents = transactions
     .filter((transaction) => transaction.type === "expense")
     .reduce((total, transaction) => total + transaction.amount_cents, 0);
+  const realizedBalanceCents = lifetimeIncomeCents - lifetimeExpenseCents;
+  const pendingBillsCents = pendingBills.reduce(
+    (total, bill) => total + bill.amount_cents,
+    0,
+  );
+  const openCardsCents = cardInstallments.reduce(
+    (total, installment) => total + installment.amount_cents,
+    0,
+  );
 
   const topExpenseStart =
     expenseRange === "month"
@@ -331,7 +380,14 @@ export async function getDashboardData({
     lifetime: {
       incomeCents: lifetimeIncomeCents,
       expenseCents: lifetimeExpenseCents,
-      balanceCents: lifetimeIncomeCents - lifetimeExpenseCents,
+      balanceCents: realizedBalanceCents,
+    },
+    financialPosition: {
+      realizedBalanceCents,
+      projectedBalanceCents:
+        realizedBalanceCents - pendingBillsCents - openCardsCents,
+      openCardsCents,
+      pendingBillsCents,
     },
     upcomingBills: bills,
     topExpenseCategories,
