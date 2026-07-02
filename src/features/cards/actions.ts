@@ -743,6 +743,10 @@ export async function markInvoiceAsPaid(formData: FormData) {
     carry_remaining_to_next_invoice: formData.get(
       "carry_remaining_to_next_invoice",
     ),
+    invoice_is_installment: formData.get("invoice_is_installment"),
+    invoice_down_payment_amount: formData.get("invoice_down_payment_amount"),
+    invoice_installments_count: formData.get("invoice_installments_count"),
+    invoice_installment_amount: formData.get("invoice_installment_amount"),
   });
 
   if (!parsed.success) {
@@ -828,24 +832,62 @@ export async function markInvoiceAsPaid(formData: FormData) {
   }
 
   const isCreditPayment = parsed.data.payment_method === "credit_card";
-  const paidCents =
-    isCreditPayment && parsed.data.credit_is_installment === "yes"
-      ? (parsed.data.credit_installments_count ?? 1) *
-        (parseCurrencyToCents(parsed.data.credit_installment_amount ?? "") ?? 0)
-      : (parseCurrencyToCents(parsed.data.paid_amount ?? "") ?? 0);
+  const isInvoiceInstallmentPayment =
+    parsed.data.invoice_is_installment === "yes";
+  let paidCents = parseCurrencyToCents(parsed.data.paid_amount ?? "") ?? 0;
+
+  if (isInvoiceInstallmentPayment) {
+    paidCents =
+      parseCurrencyToCents(parsed.data.invoice_down_payment_amount ?? "") ?? 0;
+  } else if (isCreditPayment && parsed.data.credit_is_installment === "yes") {
+    paidCents =
+      (parsed.data.credit_installments_count ?? 1) *
+      (parseCurrencyToCents(parsed.data.credit_installment_amount ?? "") ?? 0);
+  }
 
   if (paidCents <= 0) {
     cardsRedirect({ error: "Informe um valor pago maior que zero." }, formData);
   }
 
   const remainingCents = openCents - paidCents;
-  const isPartialPayment = remainingCents > 0;
+  const isPartialPayment =
+    !isInvoiceInstallmentPayment && remainingCents > 0;
   const shouldCarryRemaining =
     parsed.data.carry_remaining_to_next_invoice === "yes";
+  const invoiceInstallmentsCount =
+    parsed.data.invoice_installments_count ?? 0;
+  const invoiceInstallmentCents =
+    parseCurrencyToCents(parsed.data.invoice_installment_amount ?? "") ?? 0;
+  const invoiceInstallmentTotalCents =
+    invoiceInstallmentsCount * invoiceInstallmentCents;
+
+  if (isInvoiceInstallmentPayment) {
+    if (paidCents >= openCents) {
+      cardsRedirect(
+        {
+          error:
+            "A entrada deve ser menor que a fatura. Para quitar tudo, use o pagamento normal.",
+        },
+        formData,
+      );
+    }
+
+    if (invoiceInstallmentsCount < 1 || invoiceInstallmentCents <= 0) {
+      cardsRedirect(
+        {
+          error:
+            "Informe a quantidade de parcelas e um valor de parcela maior que zero.",
+        },
+        formData,
+      );
+    }
+  }
 
   const interestCents = Math.max(0, paidCents - openCents);
   const paymentDescription =
-    isPartialPayment
+    isInvoiceInstallmentPayment
+      ? `Entrada parcelamento fatura ${card?.name ?? "cartão"} ${month}`
+      : isPartialPayment
       ? `Pagamento parcial fatura ${card?.name ?? "cartão"} ${month}`
       : interestCents > 0
       ? `Pagamento fatura ${card?.name ?? "cartão"} ${month} com juros`
@@ -862,7 +904,9 @@ export async function markInvoiceAsPaid(formData: FormData) {
       transaction_date: paymentDate,
       source: "web",
       notes:
-        isPartialPayment
+        isInvoiceInstallmentPayment
+          ? `Fatura em aberto: ${openCents} centavos. Entrada: ${paidCents} centavos. Parcelamento futuro: ${invoiceInstallmentTotalCents} centavos em ${invoiceInstallmentsCount} parcelas.`
+          : isPartialPayment
           ? shouldCarryRemaining
             ? `Fatura em aberto: ${openCents} centavos. Restante transferido: ${remainingCents} centavos.`
             : `Fatura em aberto: ${openCents} centavos. Restante mantido na mesma fatura: ${remainingCents} centavos.`
@@ -882,6 +926,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
 
   let transferredPurchaseId: string | null = null;
   let carriedPurchaseId: string | null = null;
+  let invoiceInstallmentPurchaseId: string | null = null;
 
   if (isCreditPayment) {
     const paymentCardId = parsed.data.payment_credit_card_id;
@@ -957,6 +1002,129 @@ export async function markInvoiceAsPaid(formData: FormData) {
         },
         formData,
       );
+    }
+  }
+
+  if (isInvoiceInstallmentPayment) {
+    const cardDueDay = card?.due_day;
+
+    if (!cardDueDay) {
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect(
+        {
+          error: "Não foi possível identificar o vencimento do cartão.",
+        },
+        formData,
+      );
+    }
+
+    const { data: installmentPurchase, error: installmentPurchaseError } =
+      await supabase
+        .from("credit_card_purchases")
+        .insert({
+          user_id: user.id,
+          credit_card_id: cardId,
+          category_id: invoiceCategoryId,
+          description: `Parcelamento fatura ${card?.name ?? "cartão"} ${month}`,
+          total_amount_cents: invoiceInstallmentTotalCents,
+          purchase_date: paymentDate,
+          installments_count: invoiceInstallmentsCount,
+          source: "web",
+          skip_transaction_on_payment: false,
+          source_invoice_transaction_id: transaction.id,
+        })
+        .select("id")
+        .single();
+
+    if (installmentPurchaseError || !installmentPurchase) {
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect(
+        {
+          error: "Não foi possível criar o parcelamento da fatura.",
+        },
+        formData,
+      );
+    }
+
+    invoiceInstallmentPurchaseId = installmentPurchase.id as string;
+
+    let previousInvoiceMonth = month;
+
+    for (
+      let installmentNumber = 1;
+      installmentNumber <= invoiceInstallmentsCount;
+      installmentNumber += 1
+    ) {
+      let installmentDueDate: string;
+
+      try {
+        installmentDueDate = await findNextOpenInvoiceDueDate({
+          cardId,
+          dueDay: cardDueDay,
+          invoiceMonth: previousInvoiceMonth,
+          supabase,
+          userId: user.id,
+        });
+      } catch {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", invoiceInstallmentPurchaseId)
+          .eq("user_id", user.id);
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("id", transaction.id)
+          .eq("user_id", user.id);
+        cardsRedirect(
+          {
+            error:
+              "Não foi possível encontrar uma fatura futura para o parcelamento.",
+          },
+          formData,
+        );
+      }
+
+      const { error: installmentError } = await supabase
+        .from("installments")
+        .insert({
+          user_id: user.id,
+          purchase_id: invoiceInstallmentPurchaseId,
+          installment_number: installmentNumber,
+          amount_cents: invoiceInstallmentCents,
+          due_date: installmentDueDate,
+          status:
+            installmentDueDate < todayInSaoPaulo() ? "overdue" : "pending",
+        });
+
+      if (installmentError) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", invoiceInstallmentPurchaseId)
+          .eq("user_id", user.id);
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("id", transaction.id)
+          .eq("user_id", user.id);
+        cardsRedirect(
+          {
+            error: "Não foi possível criar as parcelas do parcelamento.",
+          },
+          formData,
+        );
+      }
+
+      previousInvoiceMonth = installmentDueDate.slice(0, 7);
     }
   }
 
@@ -1243,6 +1411,14 @@ export async function markInvoiceAsPaid(formData: FormData) {
       .eq("user_id", user.id);
 
     if (updateError) {
+      if (invoiceInstallmentPurchaseId) {
+        await supabase
+          .from("credit_card_purchases")
+          .delete()
+          .eq("id", invoiceInstallmentPurchaseId)
+          .eq("user_id", user.id);
+      }
+
       if (carriedPurchaseId) {
         await supabase
           .from("credit_card_purchases")
@@ -1277,7 +1453,9 @@ export async function markInvoiceAsPaid(formData: FormData) {
   revalidatePath("/resumo");
   cardsRedirect(
     {
-      success: isPartialPayment
+      success: isInvoiceInstallmentPayment
+        ? "Parcelamento de fatura registrado. A entrada foi lançada e as parcelas foram criadas nas próximas faturas."
+        : isPartialPayment
         ? shouldCarryRemaining
           ? "Pagamento parcial registrado. O restante foi enviado para a próxima fatura."
           : "Pagamento parcial registrado. O restante continua nesta fatura."

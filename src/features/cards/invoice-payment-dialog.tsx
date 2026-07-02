@@ -41,6 +41,7 @@ export function InvoicePaymentDialog({
     "pix" | "debit_card" | "boleto" | "credit_card"
   >("pix");
   const [isInstallmentCredit, setIsInstallmentCredit] = useState(false);
+  const [isInvoiceInstallment, setIsInvoiceInstallment] = useState(false);
   const otherCards = cards.filter((card) => card.id !== invoice.card_id);
 
   return (
@@ -98,9 +99,16 @@ export function InvoicePaymentDialog({
                 type="hidden"
                 value={invoice.invoice_month}
               />
+              <input
+                name="invoice_is_installment"
+                type="hidden"
+                value={isInvoiceInstallment ? "yes" : "no"}
+              />
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Como foi feito o pagamento?
+                {isInvoiceInstallment
+                  ? "Como será paga a entrada?"
+                  : "Como foi feito o pagamento?"}
                 <select
                   className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   name="payment_method"
@@ -118,12 +126,39 @@ export function InvoicePaymentDialog({
                   <option value="pix">Pix</option>
                   <option value="debit_card">Débito</option>
                   <option value="boleto">Boleto</option>
-                  <option value="credit_card">Crédito</option>
+                  {!isInvoiceInstallment ? (
+                    <option value="credit_card">Crédito</option>
+                  ) : null}
                 </select>
               </label>
 
+              <label className="flex items-start justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                <span>
+                  <span className="block font-semibold text-slate-900">
+                    Parcelamento de fatura
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    Registra uma entrada agora e joga as parcelas nas próximas
+                    faturas deste cartão.
+                  </span>
+                </span>
+                <input
+                  className="mt-1 size-4 accent-emerald-600"
+                  type="checkbox"
+                  checked={isInvoiceInstallment}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setIsInvoiceInstallment(checked);
+
+                    if (checked && paymentMethod === "credit_card") {
+                      setPaymentMethod("pix");
+                    }
+                  }}
+                />
+              </label>
+
               <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Data do pagamento
+                {isInvoiceInstallment ? "Data da entrada" : "Data do pagamento"}
                 <input
                   className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   name="payment_date"
@@ -133,7 +168,50 @@ export function InvoicePaymentDialog({
                 />
               </label>
 
-              {paymentMethod === "credit_card" ? (
+              {isInvoiceInstallment ? (
+                <div className="grid gap-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+                  <label className="grid gap-2 text-sm font-medium text-emerald-950">
+                    Entrada
+                    <input
+                      className="h-11 rounded-2xl border border-emerald-200 bg-white px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                      inputMode="decimal"
+                      name="invoice_down_payment_amount"
+                      placeholder="Ex: 200,00"
+                      required={isInvoiceInstallment}
+                    />
+                  </label>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-medium text-emerald-950">
+                      Quantidade de parcelas
+                      <input
+                        className="h-11 rounded-2xl border border-emerald-200 bg-white px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                        max={72}
+                        min={1}
+                        name="invoice_installments_count"
+                        required={isInvoiceInstallment}
+                        type="number"
+                        defaultValue={1}
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium text-emerald-950">
+                      Valor de cada parcela
+                      <input
+                        className="h-11 rounded-2xl border border-emerald-200 bg-white px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                        inputMode="decimal"
+                        name="invoice_installment_amount"
+                        placeholder="Ex: 95,00"
+                        required={isInvoiceInstallment}
+                      />
+                    </label>
+                  </div>
+
+                  <p className="text-xs leading-5 text-emerald-900">
+                    A entrada será lançada em transações. As parcelas serão
+                    adicionadas automaticamente nas próximas faturas do cartão.
+                  </p>
+                </div>
+              ) : paymentMethod === "credit_card" ? (
                 <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
                     Qual cartão pagou esta fatura?
@@ -226,26 +304,28 @@ export function InvoicePaymentDialog({
                 </label>
               )}
 
-              <div className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-                <p>
-                  Se o valor pago for maior que a fatura, o FluxoPay registra a
-                  diferença como juros/taxa no pagamento.
-                </p>
-                <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
-                  <input
-                    className="mt-0.5 size-4 accent-amber-600"
-                    name="carry_remaining_to_next_invoice"
-                    type="checkbox"
-                    value="yes"
-                  />
-                  <span>
-                    Se este for um pagamento parcial, marcar esta opção move o
-                    restante para a próxima fatura como &quot;Restante do mês
-                    passado&quot;. Se deixar desmarcado, o restante continua nesta
-                    mesma fatura.
-                  </span>
-                </label>
-              </div>
+              {!isInvoiceInstallment ? (
+                <div className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+                  <p>
+                    Se o valor pago for maior que a fatura, o FluxoPay registra a
+                    diferença como juros/taxa no pagamento.
+                  </p>
+                  <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                    <input
+                      className="mt-0.5 size-4 accent-amber-600"
+                      name="carry_remaining_to_next_invoice"
+                      type="checkbox"
+                      value="yes"
+                    />
+                    <span>
+                      Se este for um pagamento parcial, marcar esta opção move o
+                      restante para a próxima fatura como &quot;Restante do mês
+                      passado&quot;. Se deixar desmarcado, o restante continua nesta
+                      mesma fatura.
+                    </span>
+                  </label>
+                </div>
+              ) : null}
 
               <div className="flex flex-wrap justify-end gap-2">
                 <button
@@ -262,7 +342,9 @@ export function InvoicePaymentDialog({
                   }
                   pendingLabel="Pagando fatura..."
                 >
-                  Confirmar pagamento
+                  {isInvoiceInstallment
+                    ? "Confirmar parcelamento"
+                    : "Confirmar pagamento"}
                 </SubmitButton>
               </div>
             </form>

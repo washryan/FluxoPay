@@ -61,8 +61,49 @@ export const invoicePaymentSchema = z
     credit_installments_count: optionalInstallmentsCountSchema,
     credit_installment_amount: optionalFormStringSchema,
     carry_remaining_to_next_invoice: optionalInstallmentModeSchema,
+    invoice_is_installment: optionalInstallmentModeSchema,
+    invoice_down_payment_amount: optionalFormStringSchema,
+    invoice_installments_count: optionalInstallmentsCountSchema,
+    invoice_installment_amount: optionalFormStringSchema,
   })
   .superRefine((data, context) => {
+    if (data.invoice_is_installment === "yes") {
+      if (data.payment_method === "credit_card") {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Use Pix, débito ou boleto para registrar a entrada do parcelamento.",
+          path: ["payment_method"],
+        });
+      }
+
+      if (!data.invoice_down_payment_amount) {
+        context.addIssue({
+          code: "custom",
+          message: "Informe o valor da entrada.",
+          path: ["invoice_down_payment_amount"],
+        });
+      }
+
+      if (!data.invoice_installments_count) {
+        context.addIssue({
+          code: "custom",
+          message: "Informe a quantidade de parcelas.",
+          path: ["invoice_installments_count"],
+        });
+      }
+
+      if (!data.invoice_installment_amount) {
+        context.addIssue({
+          code: "custom",
+          message: "Informe o valor das parcelas.",
+          path: ["invoice_installment_amount"],
+        });
+      }
+
+      return;
+    }
+
     if (data.payment_method !== "credit_card") {
       if (!data.paid_amount) {
         context.addIssue({
