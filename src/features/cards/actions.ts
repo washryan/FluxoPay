@@ -226,6 +226,38 @@ export async function deleteCreditCardPurchase(formData: FormData) {
   cardsRedirect({ success: "Compra excluída." });
 }
 
+export async function revokeInvoicePayment(formData: FormData) {
+  const transactionId = String(formData.get("transaction_id") ?? "");
+
+  if (!transactionId) {
+    cardsRedirect({ error: "Pagamento inválido." });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase.rpc("revoke_invoice_payment", {
+    p_transaction_id: transactionId,
+  });
+
+  if (error) {
+    cardsRedirect({
+      error: "Não foi possível revogar o pagamento da fatura.",
+    });
+  }
+
+  revalidatePath("/cards");
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  cardsRedirect({ success: "Pagamento revogado. A fatura voltou para em aberto." });
+}
+
 type InstallmentPaymentRow = {
   id: string;
   user_id: string;
@@ -589,6 +621,28 @@ export async function markInvoiceAsPaid(formData: FormData) {
     }
 
     transferredPurchaseId = transferredId as string;
+
+    const { error: linkError } = await supabase
+      .from("credit_card_purchases")
+      .update({ source_invoice_transaction_id: transaction.id })
+      .eq("id", transferredPurchaseId)
+      .eq("user_id", user.id);
+
+    if (linkError) {
+      await supabase
+        .from("credit_card_purchases")
+        .delete()
+        .eq("id", transferredPurchaseId)
+        .eq("user_id", user.id);
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Não foi possível vincular o detalhamento da fatura paga.",
+      });
+    }
   }
 
   const ids = installments.map((installment) => installment.id);

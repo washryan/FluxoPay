@@ -259,6 +259,19 @@ export type CreditCardInvoiceItem = {
   paid_transaction_id: string | null;
   category_name: string | null;
   category_color: string | null;
+  source_invoice_transaction_id: string | null;
+  source_invoice_details: CreditCardInvoicePaymentDetail[];
+};
+
+export type CreditCardInvoicePaymentDetail = {
+  id: string;
+  purchase_description: string;
+  card_name: string;
+  category_name: string | null;
+  category_color: string | null;
+  installment_number: number;
+  installments_count: number;
+  amount_cents: number;
 };
 
 export type CreditCardInvoice = {
@@ -270,6 +283,7 @@ export type CreditCardInvoice = {
   total_cents: number;
   open_cents: number;
   paid_cents: number;
+  payment_transaction_id: string | null;
   status: "pending" | "paid" | "overdue" | "cancelled";
   items: CreditCardInvoiceItem[];
 };
@@ -287,6 +301,7 @@ type InvoiceInstallmentRow = {
         description: string;
         installments_count: number;
         credit_card_id: string;
+        source_invoice_transaction_id: string | null;
         categories:
           | { name: string; color: string }
           | { name: string; color: string }[]
@@ -297,6 +312,34 @@ type InvoiceInstallmentRow = {
         description: string;
         installments_count: number;
         credit_card_id: string;
+        source_invoice_transaction_id: string | null;
+        categories:
+          | { name: string; color: string }
+          | { name: string; color: string }[]
+          | null;
+        credit_cards: { name: string } | { name: string }[] | null;
+      }[]
+    | null;
+};
+
+type SourceInvoiceDetailRow = {
+  id: string;
+  paid_transaction_id: string | null;
+  installment_number: number;
+  amount_cents: number;
+  credit_card_purchases:
+    | {
+        description: string;
+        installments_count: number;
+        categories:
+          | { name: string; color: string }
+          | { name: string; color: string }[]
+          | null;
+        credit_cards: { name: string } | { name: string }[] | null;
+      }
+    | {
+        description: string;
+        installments_count: number;
         categories:
           | { name: string; color: string }
           | { name: string; color: string }[]
@@ -324,6 +367,26 @@ function invoiceStatus(
   return "pending";
 }
 
+function invoicePaymentTransactionId(items: CreditCardInvoiceItem[]) {
+  const transactionIds = Array.from(
+    new Set(
+      items
+        .filter((item) => item.status === "paid" && item.paid_transaction_id)
+        .map((item) => item.paid_transaction_id),
+    ),
+  );
+
+  if (
+    items.length > 0 &&
+    items.every((item) => item.status === "paid") &&
+    transactionIds.length === 1
+  ) {
+    return transactionIds[0] ?? null;
+  }
+
+  return null;
+}
+
 export async function getCreditCardInvoices() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -341,6 +404,7 @@ export async function getCreditCardInvoices() {
         description,
         installments_count,
         credit_card_id,
+        source_invoice_transaction_id,
         categories(name, color),
         credit_cards(name)
       )
@@ -355,6 +419,73 @@ export async function getCreditCardInvoices() {
 
   const grouped = new Map<string, CreditCardInvoice>();
   const rows = (data ?? []) as unknown as InvoiceInstallmentRow[];
+  const sourceTransactionIds = Array.from(
+    new Set(
+      rows
+        .map((installment) => {
+          const purchase = firstRelation(installment.credit_card_purchases);
+
+          return purchase?.source_invoice_transaction_id ?? null;
+        })
+        .filter(Boolean),
+    ),
+  ) as string[];
+  const sourceDetailsByTransaction = new Map<
+    string,
+    CreditCardInvoicePaymentDetail[]
+  >();
+
+  if (sourceTransactionIds.length > 0) {
+    const { data: detailsData, error: detailsError } = await supabase
+      .from("installments")
+      .select(
+        `
+        id,
+        paid_transaction_id,
+        installment_number,
+        amount_cents,
+        credit_card_purchases(
+          description,
+          installments_count,
+          categories(name, color),
+          credit_cards(name)
+        )
+        `,
+      )
+      .in("paid_transaction_id", sourceTransactionIds)
+      .order("due_date", { ascending: true });
+
+    if (detailsError) {
+      return {
+        error: detailsError.message,
+        invoices: [] as CreditCardInvoice[],
+      };
+    }
+
+    for (const detail of (detailsData ?? []) as unknown as SourceInvoiceDetailRow[]) {
+      if (!detail.paid_transaction_id) {
+        continue;
+      }
+
+      const purchase = firstRelation(detail.credit_card_purchases);
+      const category = firstRelation(purchase?.categories ?? null);
+      const card = firstRelation(purchase?.credit_cards ?? null);
+      const current =
+        sourceDetailsByTransaction.get(detail.paid_transaction_id) ?? [];
+
+      current.push({
+        id: detail.id,
+        purchase_description: purchase?.description ?? "Compra",
+        card_name: card?.name ?? "Cartão",
+        category_name: category?.name ?? null,
+        category_color: category?.color ?? null,
+        installment_number: detail.installment_number,
+        installments_count: purchase?.installments_count ?? 1,
+        amount_cents: detail.amount_cents,
+      });
+      sourceDetailsByTransaction.set(detail.paid_transaction_id, current);
+    }
+  }
 
   for (const installment of rows) {
     const purchase = firstRelation(installment.credit_card_purchases);
@@ -376,6 +507,7 @@ export async function getCreditCardInvoices() {
       total_cents: 0,
       open_cents: 0,
       paid_cents: 0,
+      payment_transaction_id: null,
       status: "pending" as const,
       items: [],
     };
@@ -392,6 +524,10 @@ export async function getCreditCardInvoices() {
       paid_transaction_id: installment.paid_transaction_id,
       category_name: category?.name ?? null,
       category_color: category?.color ?? null,
+      source_invoice_transaction_id: purchase.source_invoice_transaction_id,
+      source_invoice_details: purchase.source_invoice_transaction_id
+        ? (sourceDetailsByTransaction.get(purchase.source_invoice_transaction_id) ?? [])
+        : [],
     };
 
     current.items.push(item);
@@ -416,6 +552,7 @@ export async function getCreditCardInvoices() {
     .map((invoice) => ({
       ...invoice,
       items: invoice.items.sort((a, b) => a.due_date.localeCompare(b.due_date)),
+      payment_transaction_id: invoicePaymentTransactionId(invoice.items),
       status: invoiceStatus(invoice.items),
     }))
     .sort((a, b) => b.invoice_month.localeCompare(a.invoice_month));

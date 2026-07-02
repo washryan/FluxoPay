@@ -8,6 +8,7 @@ import {
   deleteCreditCardPurchase,
   markInstallmentAsPaid,
   markInvoiceAsPaid,
+  revokeInvoicePayment,
 } from "@/features/cards/actions";
 import { CustomCardForm } from "@/features/cards/card-form";
 import {
@@ -339,6 +340,22 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                           cards={cardsResult.cards}
                           invoice={invoice}
                         />
+                      ) : invoice.payment_transaction_id ? (
+                        <form action={revokeInvoicePayment}>
+                          <input
+                            name="transaction_id"
+                            type="hidden"
+                            value={invoice.payment_transaction_id}
+                          />
+                          <ConfirmButton
+                            className="h-10 px-4 text-sm"
+                            message={`Revogar o pagamento da fatura de ${invoice.card_name}? A transação será excluída e as parcelas voltarão para em aberto ou atrasadas.`}
+                            pendingLabel="Revogando..."
+                            variant="danger"
+                          >
+                            Revogar pagamento
+                          </ConfirmButton>
+                        </form>
                       ) : null}
                     </div>
                   </div>
@@ -367,56 +384,113 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                   <div className="divide-y divide-slate-200 border-t border-slate-200 bg-white">
                     {invoice.items.map((item) => (
                       <div
-                        className="grid gap-3 p-4 md:grid-cols-[1fr_auto_auto] md:items-center"
+                        className="p-4"
                         key={item.id}
                       >
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-semibold text-slate-950">
-                              {item.purchase_description}
-                            </h4>
-                            {item.category_name ? (
-                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                                {item.category_name}
+                        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-semibold text-slate-950">
+                                {item.purchase_description}
+                              </h4>
+                              {item.category_name ? (
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                  {item.category_name}
+                                </span>
+                              ) : null}
+                              <span
+                                className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                  billStatusStyles[item.status]
+                                }`}
+                              >
+                                {billStatusLabels[item.status]}
                               </span>
-                            ) : null}
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                                billStatusStyles[item.status]
-                              }`}
-                            >
-                              {billStatusLabels[item.status]}
-                            </span>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Parcela {item.installment_number}/
+                              {item.installments_count} · vence{" "}
+                              {formatDate(item.due_date)}
+                            </p>
                           </div>
-                          <p className="mt-1 text-sm text-slate-500">
-                            Parcela {item.installment_number}/
-                            {item.installments_count} · vence{" "}
-                            {formatDate(item.due_date)}
-                          </p>
+
+                          <strong className="text-lg text-slate-950">
+                            {formatCurrencyFromCents(item.amount_cents)}
+                          </strong>
+
+                          {item.status !== "paid" &&
+                          item.status !== "cancelled" ? (
+                            <form action={markInstallmentAsPaid}>
+                              <input name="id" type="hidden" value={item.id} />
+                              <ConfirmButton
+                                className="h-9"
+                                message={`Pagar esta parcela de ${formatCurrencyFromCents(item.amount_cents)}?`}
+                                pendingLabel="Pagando..."
+                                variant="emerald"
+                              >
+                                Pagar parcela
+                              </ConfirmButton>
+                            </form>
+                          ) : item.paid_transaction_id &&
+                            !invoice.payment_transaction_id ? (
+                            <form action={revokeInvoicePayment}>
+                              <input
+                                name="transaction_id"
+                                type="hidden"
+                                value={item.paid_transaction_id}
+                              />
+                              <ConfirmButton
+                                className="h-9"
+                                message={`Revogar o pagamento desta parcela? A transação será excluída e a parcela voltará para em aberto ou atrasada.`}
+                                pendingLabel="Revogando..."
+                                variant="danger"
+                              >
+                                Revogar
+                              </ConfirmButton>
+                            </form>
+                          ) : (
+                            <span className="text-xs font-semibold text-slate-400 md:text-right">
+                              Sem ação
+                            </span>
+                          )}
                         </div>
 
-                        <strong className="text-lg text-slate-950">
-                          {formatCurrencyFromCents(item.amount_cents)}
-                        </strong>
-
-                        {item.status !== "paid" &&
-                        item.status !== "cancelled" ? (
-                          <form action={markInstallmentAsPaid}>
-                            <input name="id" type="hidden" value={item.id} />
-                            <ConfirmButton
-                              className="h-9"
-                              message={`Pagar esta parcela de ${formatCurrencyFromCents(item.amount_cents)}?`}
-                              pendingLabel="Pagando..."
-                              variant="emerald"
-                            >
-                              Pagar parcela
-                            </ConfirmButton>
-                          </form>
-                        ) : (
-                          <span className="text-xs font-semibold text-slate-400 md:text-right">
-                            Sem ação
-                          </span>
-                        )}
+                        {item.source_invoice_details.length > 0 ? (
+                          <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                            <summary className="cursor-pointer font-semibold text-slate-700">
+                              Ver detalhamento da fatura paga (
+                              {item.source_invoice_details.length} itens)
+                            </summary>
+                            <div className="mt-3 grid gap-2 pl-3">
+                              {item.source_invoice_details.map((detail) => (
+                                <div
+                                  className="grid gap-2 rounded-2xl bg-white p-3 md:grid-cols-[1fr_auto] md:items-center"
+                                  key={detail.id}
+                                >
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="font-semibold text-slate-900">
+                                        {detail.purchase_description}
+                                      </p>
+                                      {detail.category_name ? (
+                                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                                          {detail.category_name}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      {detail.card_name} · parcela{" "}
+                                      {detail.installment_number}/
+                                      {detail.installments_count}
+                                    </p>
+                                  </div>
+                                  <strong className="text-sm text-slate-950 md:text-right">
+                                    {formatCurrencyFromCents(detail.amount_cents)}
+                                  </strong>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        ) : null}
                       </div>
                     ))}
                   </div>

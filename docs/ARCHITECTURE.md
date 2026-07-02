@@ -117,6 +117,11 @@ Fase 3: contas e cartoes
   pagamento, mas essas parcelas nao criam nova transacao ao serem pagas. A
   transacao da fatura original ja registra o valor total pago e evita dupla
   contagem no saldo.
+- Compras criadas por pagamento de fatura no credito guardam vinculo com a
+  transacao original para exibir o detalhamento recolhivel da fatura paga.
+- Pagamentos de fatura podem ser revogados: a transacao e removida, parcelas
+  originais voltam para pendente/atrasada e compras de transferencia no cartao
+  de pagamento sao removidas.
 - Status automatico de vencidos para contas e parcelas.
 - Confirmacao no cliente antes de pagar, cancelar ou excluir.
 
