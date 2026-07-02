@@ -10,6 +10,11 @@ const optionalFormStringSchema = z.preprocess(
   z.string().trim().optional(),
 );
 
+const optionalInstallmentModeSchema = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  z.enum(["yes", "no"]).optional(),
+);
+
 export const creditCardSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do cartão.").max(80),
   closing_day: z.coerce.number().int().min(1).max(31),
@@ -48,7 +53,7 @@ export const invoicePaymentSchema = z
     payment_method: z.enum(["pix", "debit_card", "boleto", "credit_card"]),
     paid_amount: optionalFormStringSchema,
     payment_credit_card_id: optionalFormStringSchema,
-    credit_is_installment: z.enum(["yes", "no"]).optional(),
+    credit_is_installment: optionalInstallmentModeSchema,
     credit_installments_count: optionalInstallmentsCountSchema,
     credit_installment_amount: optionalFormStringSchema,
   })
