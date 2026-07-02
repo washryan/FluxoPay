@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { SubmitButton } from "@/components/submit-button";
 import type { CreditCard, CreditCardInvoice } from "@/features/cards/data";
@@ -44,19 +45,28 @@ export function InvoicePaymentDialog({
   const [isInvoiceInstallment, setIsInvoiceInstallment] = useState(false);
   const otherCards = cards.filter((card) => card.id !== invoice.card_id);
 
-  return (
-    <>
-      <button
-        className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
-        type="button"
-        onClick={() => setIsOpen(true)}
-      >
-        Pagar fatura
-      </button>
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-xl animate-rise rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-2xl">
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  const dialog =
+    isOpen && typeof document !== "undefined" ? (
+      <div
+        aria-modal="true"
+        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
+        role="dialog"
+      >
+        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl animate-rise flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-2xl shadow-slate-950/25 sm:max-h-[calc(100dvh-3rem)]">
+          <div className="shrink-0 border-b border-slate-100 p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -80,8 +90,10 @@ export function InvoicePaymentDialog({
                 Fechar
               </button>
             </div>
+          </div>
 
-            <form action={action} className="mt-5 grid gap-4">
+          <form action={action} className="min-h-0 overflow-y-auto p-5">
+            <div className="grid gap-4">
               <input name="cards_return_anchor" type="hidden" value="faturas" />
               <input
                 name="cards_invoice_status"
@@ -252,7 +264,11 @@ export function InvoicePaymentDialog({
 
                   {!isInstallmentCredit ? (
                     <>
-                      <input name="credit_is_installment" type="hidden" value="no" />
+                      <input
+                        name="credit_is_installment"
+                        type="hidden"
+                        value="no"
+                      />
                       <label className="grid gap-2 text-sm font-medium text-slate-700">
                         Valor pago
                         <input
@@ -307,8 +323,8 @@ export function InvoicePaymentDialog({
               {!isInvoiceInstallment ? (
                 <div className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
                   <p>
-                    Se o valor pago for maior que a fatura, o FluxoPay registra a
-                    diferença como juros/taxa no pagamento.
+                    Se o valor pago for maior que a fatura, o FluxoPay registra
+                    a diferença como juros/taxa no pagamento.
                   </p>
                   <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
                     <input
@@ -320,8 +336,8 @@ export function InvoicePaymentDialog({
                     <span>
                       Se este for um pagamento parcial, marcar esta opção move o
                       restante para a próxima fatura como &quot;Restante do mês
-                      passado&quot;. Se deixar desmarcado, o restante continua nesta
-                      mesma fatura.
+                      passado&quot;. Se deixar desmarcado, o restante continua
+                      nesta mesma fatura.
                     </span>
                   </label>
                 </div>
@@ -347,10 +363,23 @@ export function InvoicePaymentDialog({
                     : "Confirmar pagamento"}
                 </SubmitButton>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
-      ) : null}
+      </div>
+    ) : null;
+
+  return (
+    <>
+      <button
+        className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+        type="button"
+        onClick={() => setIsOpen(true)}
+      >
+        Pagar fatura
+      </button>
+
+      {dialog ? createPortal(dialog, document.body) : null}
     </>
   );
 }

@@ -1,14 +1,33 @@
-import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ReceiptText,
+  SearchX,
+  XCircle,
+} from "lucide-react";
 
+import {
+  EmptyState,
+  MetricCard,
+  PageFrame,
+  PageHero,
+  SoftBadge,
+  Surface,
+} from "@/components/app-ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { DeleteButton } from "@/components/delete-button";
-import { createBill, deleteBill, updateBillStatus } from "@/features/bills/actions";
+import { BillForm } from "@/features/bills/bill-form";
+import {
+  createBill,
+  deleteBill,
+  updateBillStatus,
+} from "@/features/bills/actions";
 import {
   billStatusLabels,
   billStatusStyles,
   recurrenceLabels,
 } from "@/features/bills/constants";
-import { BillForm } from "@/features/bills/bill-form";
 import { getBills } from "@/features/bills/data";
 import { getCategories } from "@/features/categories/data";
 import { formatCurrencyFromCents, formatDate } from "@/lib/formatters";
@@ -26,7 +45,6 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
     getBills(),
     getCategories(),
   ]);
-
   const pendingTotal = billsResult.bills
     .filter((bill) => bill.status === "pending" || bill.status === "overdue")
     .reduce((total, bill) => total + bill.amount_cents, 0);
@@ -36,112 +54,126 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
   const overdueCount = billsResult.bills.filter(
     (bill) => bill.status === "overdue",
   ).length;
+  const pageError =
+    params.error ?? billsResult.error ?? categoriesResult.error ?? null;
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="animate-rise rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">
-            Contas futuras
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-            Organize vencimentos e recorrências.
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-            Cadastre contas a pagar ou receber, acompanhe o status e mantenha o
-            dashboard preparado para lembretes pelo bot.
-          </p>
-        </header>
+    <PageFrame>
+      <PageHero
+        actions={
+          <a
+            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-lg shadow-black/10 transition hover:bg-emerald-100"
+            href="#nova-conta"
+          >
+            Criar conta
+          </a>
+        }
+        description="Cadastre contas a pagar ou receber, acompanhe recorrências e deixe os lembretes do bot prontos para agir."
+        eyebrow="Contas futuras"
+        title="Vencimentos sem susto no fim do mês."
+        variant="dark"
+      >
+        <div className="mt-6 flex flex-wrap gap-2 text-sm">
+          <SoftBadge className="border-white/15 bg-white/10 text-emerald-50">
+            {billsResult.bills.length} contas cadastradas
+          </SoftBadge>
+          <SoftBadge className="border-white/15 bg-white/10 text-emerald-50">
+            Recorrências e status automáticos
+          </SoftBadge>
+        </div>
+      </PageHero>
 
-        {params.success ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {params.success}
-          </div>
-        ) : null}
+      {params.success ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {params.success}
+        </div>
+      ) : null}
 
-        {params.error ?? billsResult.error ?? categoriesResult.error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {params.error ??
-              billsResult.error ??
-              "Não foi possível carregar contas."}
-          </div>
-        ) : null}
+      {pageError ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {pageError}
+        </div>
+      ) : null}
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">Pendentes/atrasadas</p>
-              <Clock className="size-5 text-amber-600" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-slate-950">
-              {formatCurrencyFromCents(pendingTotal)}
-            </p>
-          </article>
-          <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">Pagas</p>
-              <CheckCircle2 className="size-5 text-emerald-600" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-emerald-700">
-              {formatCurrencyFromCents(paidTotal)}
-            </p>
-          </article>
-          <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">Atrasadas</p>
-              <XCircle className="size-5 text-red-600" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-red-600">
-              {overdueCount}
-            </p>
-          </article>
-        </section>
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard
+          description="Valor total ainda em aberto ou atrasado."
+          icon={Clock}
+          label="Pendentes/atrasadas"
+          tone="amber"
+          value={formatCurrencyFromCents(pendingTotal)}
+        />
+        <MetricCard
+          description="Contas marcadas como pagas no histórico."
+          icon={CheckCircle2}
+          label="Pagas"
+          tone="emerald"
+          value={formatCurrencyFromCents(paidTotal)}
+        />
+        <MetricCard
+          description="Quantidade de contas que já passaram do vencimento."
+          icon={XCircle}
+          label="Atrasadas"
+          tone={overdueCount > 0 ? "red" : "slate"}
+          value={String(overdueCount)}
+        />
+      </section>
 
-        <section className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
+      <section className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
+        <div id="nova-conta">
           <BillForm
             action={createBill}
             categories={categoriesResult.categories}
           />
+        </div>
 
-          <article className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold">Lista de contas</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {billsResult.bills.length} contas cadastradas.
-            </p>
-
-            <div className="mt-5 overflow-hidden rounded-3xl border border-slate-100">
-              {billsResult.bills.length > 0 ? (
-                <div className="divide-y divide-slate-100">
-                  {billsResult.bills.map((bill) => (
-                    <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_145px_132px_220px]" key={bill.id}>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="size-3 rounded-full"
-                            style={{
-                              backgroundColor:
-                                bill.categories?.color ?? "#64748b",
-                            }}
-                          />
-                          <p className="truncate font-medium text-slate-900">
-                            {bill.name}
-                          </p>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {bill.categories?.name ?? "Sem categoria"} ·{" "}
-                          {recurrenceLabels[bill.recurrence]} · vence em{" "}
-                          {formatDate(bill.due_date)}
+        <Surface
+          action={
+            <span className="rounded-2xl bg-slate-950 p-2 text-white">
+              <ReceiptText className="size-5" />
+            </span>
+          }
+          className="min-w-0"
+          description="Acompanhe status, recorrência e vencimento sem precisar abrir cada item."
+          title="Lista de contas"
+        >
+          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
+            {billsResult.bills.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {billsResult.bills.map((bill) => (
+                  <div
+                    className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_145px_132px_220px] xl:items-center"
+                    key={bill.id}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-3 shrink-0 rounded-full"
+                          style={{
+                            backgroundColor:
+                              bill.categories?.color ?? "#64748b",
+                          }}
+                        />
+                        <p className="truncate font-semibold text-slate-900">
+                          {bill.name}
                         </p>
                       </div>
-                      <p className="font-semibold text-slate-950">
-                        {formatCurrencyFromCents(bill.amount_cents)}
+                      <p className="mt-1 text-xs text-slate-500">
+                        {bill.categories?.name ?? "Sem categoria"} ·{" "}
+                        {recurrenceLabels[bill.recurrence]} · vence em{" "}
+                        {formatDate(bill.due_date)}
                       </p>
-                      <span
-                        className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${billStatusStyles[bill.status]}`}
-                      >
-                        {billStatusLabels[bill.status]}
-                      </span>
-                      <div className="flex flex-wrap items-center gap-2">
+                    </div>
+                    <p className="font-semibold text-slate-950">
+                      {formatCurrencyFromCents(bill.amount_cents)}
+                    </p>
+                    <SoftBadge
+                      className={`w-fit ${billStatusStyles[bill.status]}`}
+                    >
+                      {billStatusLabels[bill.status]}
+                    </SoftBadge>
+                    <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                      {bill.status !== "paid" ? (
                         <form action={updateBillStatus}>
                           <input name="id" type="hidden" value={bill.id} />
                           <input name="status" type="hidden" value="paid" />
@@ -153,9 +185,15 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
                             Pagar
                           </ConfirmButton>
                         </form>
+                      ) : null}
+                      {bill.status !== "cancelled" ? (
                         <form action={updateBillStatus}>
                           <input name="id" type="hidden" value={bill.id} />
-                          <input name="status" type="hidden" value="cancelled" />
+                          <input
+                            name="status"
+                            type="hidden"
+                            value="cancelled"
+                          />
                           <ConfirmButton
                             message={`Cancelar "${bill.name}"?`}
                             pendingLabel="Cancelando..."
@@ -163,25 +201,32 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
                             Cancelar
                           </ConfirmButton>
                         </form>
-                        <form action={deleteBill}>
-                          <input name="id" type="hidden" value={bill.id} />
-                          <DeleteButton message="Excluir esta conta?">
-                            Excluir
-                          </DeleteButton>
-                        </form>
-                      </div>
+                      ) : null}
+                      <form action={deleteBill}>
+                        <input name="id" type="hidden" value={bill.id} />
+                        <DeleteButton message="Excluir esta conta?">
+                          Excluir
+                        </DeleteButton>
+                      </form>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid min-h-64 place-items-center p-6 text-center text-sm text-slate-500">
-                  Nenhuma conta futura cadastrada ainda.
-                </div>
-              )}
-            </div>
-          </article>
-        </section>
-      </div>
-    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                description="Crie contas futuras para o dashboard projetado e o bot de lembretes ficarem úteis."
+                icon={SearchX}
+                title="Nenhuma conta cadastrada"
+              />
+            )}
+          </div>
+
+          <div className="mt-4 flex items-start gap-2 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            Contas pendentes e atrasadas entram no saldo projetado do dashboard.
+          </div>
+        </Surface>
+      </section>
+    </PageFrame>
   );
 }

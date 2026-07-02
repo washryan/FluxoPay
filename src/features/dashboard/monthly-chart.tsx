@@ -36,8 +36,8 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
   }
 
   return (
-    <div className="mt-6 h-64">
-      <ResponsiveContainer height="100%" width="100%">
+    <div className="mt-6 min-h-64 min-w-0">
+      <ResponsiveContainer height={256} width="100%">
         <AreaChart data={data} margin={{ left: 0, right: 0, top: 10 }}>
           <defs>
             <linearGradient id="income" x1="0" x2="0" y1="0" y2="1">
@@ -49,7 +49,11 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
               <stop offset="95%" stopColor="#dc2626" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
+          <CartesianGrid
+            stroke="#e2e8f0"
+            strokeDasharray="4 4"
+            vertical={false}
+          />
           <XAxis
             axisLine={false}
             dataKey="month"
