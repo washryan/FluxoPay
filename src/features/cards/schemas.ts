@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const optionalInstallmentsCountSchema = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  z.coerce.number().int().min(1).max(72).optional(),
+);
+
 export const creditCardSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do cartão.").max(80),
   closing_day: z.coerce.number().int().min(1).max(31),
@@ -32,11 +37,14 @@ export const invoicePaymentSchema = z
     invoice_month: z
       .string()
       .regex(/^\d{4}-\d{2}$/, "Informe um mês de fatura válido."),
+    payment_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data do pagamento."),
     payment_method: z.enum(["pix", "debit_card", "boleto", "credit_card"]),
     paid_amount: z.string().trim().optional(),
     payment_credit_card_id: z.string().trim().optional(),
     credit_is_installment: z.enum(["yes", "no"]).optional(),
-    credit_installments_count: z.coerce.number().int().min(1).max(72).optional(),
+    credit_installments_count: optionalInstallmentsCountSchema,
     credit_installment_amount: z.string().trim().optional(),
   })
   .superRefine((data, context) => {

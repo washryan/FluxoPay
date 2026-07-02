@@ -19,6 +19,13 @@ function formatAmountInput(valueInCents: number) {
   });
 }
 
+function todayInputValue() {
+  const date = new Date();
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
 export function InvoicePaymentDialog({
   action,
   cards,
@@ -97,6 +104,17 @@ export function InvoicePaymentDialog({
                   <option value="boleto">Boleto</option>
                   <option value="credit_card">Crédito</option>
                 </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Data do pagamento
+                <input
+                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  name="payment_date"
+                  required
+                  type="date"
+                  defaultValue={todayInputValue()}
+                />
               </label>
 
               {paymentMethod === "credit_card" ? (

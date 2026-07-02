@@ -454,6 +454,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
   const parsed = invoicePaymentSchema.safeParse({
     card_id: formData.get("card_id"),
     invoice_month: formData.get("invoice_month"),
+    payment_date: formData.get("payment_date"),
     payment_method: formData.get("payment_method"),
     paid_amount: formData.get("paid_amount"),
     payment_credit_card_id: formData.get("payment_credit_card_id"),
@@ -470,6 +471,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
 
   const cardId = parsed.data.card_id;
   const month = parsed.data.invoice_month;
+  const paymentDate = parsed.data.payment_date;
   const range = monthRange(month);
 
   if (!range) {
@@ -561,7 +563,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
       description: paymentDescription,
       category_id: invoiceCategoryId,
       payment_method: parsed.data.payment_method,
-      transaction_date: todayInSaoPaulo(),
+      transaction_date: paymentDate,
       source: "web",
       notes:
         interestCents > 0
@@ -603,7 +605,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
         p_credit_card_id: paymentCardId,
         p_description: paymentDescription,
         p_installments_count: installmentsCount,
-        p_purchase_date: todayInSaoPaulo(),
+        p_purchase_date: paymentDate,
         p_skip_transaction_on_payment: true,
         p_total_amount_cents: paidCents,
       },
