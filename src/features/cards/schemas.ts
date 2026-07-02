@@ -5,6 +5,11 @@ const optionalInstallmentsCountSchema = z.preprocess(
   z.coerce.number().int().min(1).max(72).optional(),
 );
 
+const optionalFormStringSchema = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  z.string().trim().optional(),
+);
+
 export const creditCardSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do cartão.").max(80),
   closing_day: z.coerce.number().int().min(1).max(31),
@@ -41,11 +46,11 @@ export const invoicePaymentSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data do pagamento."),
     payment_method: z.enum(["pix", "debit_card", "boleto", "credit_card"]),
-    paid_amount: z.string().trim().optional(),
-    payment_credit_card_id: z.string().trim().optional(),
+    paid_amount: optionalFormStringSchema,
+    payment_credit_card_id: optionalFormStringSchema,
     credit_is_installment: z.enum(["yes", "no"]).optional(),
     credit_installments_count: optionalInstallmentsCountSchema,
-    credit_installment_amount: z.string().trim().optional(),
+    credit_installment_amount: optionalFormStringSchema,
   })
   .superRefine((data, context) => {
     if (data.payment_method !== "credit_card") {
