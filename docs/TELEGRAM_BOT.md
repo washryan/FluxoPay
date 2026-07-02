@@ -38,6 +38,7 @@ TELEGRAM_BOT_TOKEN="token-do-botfather"
 SUPABASE_URL="https://seu-projeto.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="sua-service-role-key"
 BOT_TIMEZONE="America/Sao_Paulo"
+REMINDER_INTERVAL_MINUTES="1440"
 ```
 
 6. Inicie:
@@ -60,9 +61,25 @@ npm run bot
 - `/ajuda`
 - `/saldo`
 - `/resumo`
-- Parser simples para entradas e saidas.
+- Parser para entradas e saidas com palavras-chave de categoria.
 - Confirmacao antes de salvar.
 - Salvamento em `transactions` com `source = telegram`.
+- Worker local de lembretes e relatorios.
+- Logs em `notification_logs` para evitar alertas duplicados.
+
+## Lembretes automaticos
+
+O worker inicia junto com o bot e verifica:
+
+- contas que vencem amanha;
+- contas que vencem hoje;
+- contas atrasadas;
+- faturas de cartao com vencimento em ate 3 dias;
+- relatorio semanal nas segundas-feiras;
+- relatorio mensal no primeiro dia do mes.
+
+Para teste, coloque `REMINDER_INTERVAL_MINUTES="15"` no `.env.bot`. Para uso
+real, mantenha `1440` para checagem diaria.
 
 ## Exemplos
 

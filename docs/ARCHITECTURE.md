@@ -41,11 +41,11 @@ src/features            Modulos por dominio de produto
 src/lib/supabase        Clients Supabase separados por runtime
 supabase/migrations     Schema versionado e policies RLS
 docs                    Decisoes tecnicas e documentacao do projeto
+bot                     Bot Telegram e worker local de lembretes
 ```
 
-Futuras pastas previstas:
+Pastas de dominio atuais:
 
-- `apps/bot` ou `bot/` para o worker Telegram.
 - `src/features/transactions`
 - `src/features/categories`
 - `src/features/bills`
@@ -66,6 +66,7 @@ Tabelas iniciais:
 - `telegram_links`: vinculo seguro entre usuario e Telegram.
 - `bot_pending_confirmations`: mensagens interpretadas aguardando confirmacao.
 - `notification_preferences`: preferencias de lembretes e relatorios.
+- `notification_logs`: historico de envios para evitar alertas duplicados.
 
 Dinheiro e salvo em centavos (`bigint`) para evitar problemas de precisao.
 
@@ -123,8 +124,9 @@ Fase 4: bot Telegram
 
 Fase 5: worker e acabamento de produto
 
-- Lembretes diarios.
-- Relatorios semanal/mensal.
+- Lembretes diarios via bot local.
+- Relatorios semanal/mensal via bot local.
+- Logs de notificacao para deduplicacao.
 - Empty states, loading states, toasts e prints no README.
 
 Fase 6: importacao bancaria

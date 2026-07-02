@@ -8,7 +8,7 @@ em uma máquina local.
 
 ## Status
 
-Fase atual: Fase 4 iniciada com bot Telegram.
+Fase atual: Fase 5 iniciada com lembretes automaticos.
 
 Implementado nesta etapa:
 
@@ -28,17 +28,19 @@ Implementado nesta etapa:
 - Bot Telegram via long polling com vínculo seguro por token.
 - Comandos `/start`, `/vincular`, `/ajuda`, `/saldo` e `/resumo`.
 - Cadastro de entradas/saídas por linguagem natural com confirmação.
+- Parser do Telegram com palavras-chave para categorias comuns.
+- Worker local para lembretes de contas, faturas e relatorios.
+- Logs de notificacao para evitar alertas repetidos.
 
 Ainda nao implementado:
 
-- Worker de lembretes.
 - Testes automatizados.
 
 ## Stack
 
 - Frontend: Next.js, TypeScript, Tailwind CSS, React Hook Form, Zod.
 - Backend: Supabase Auth, Supabase Postgres e Row Level Security.
-- Bot futuro: Node.js, TypeScript, Telegraf ou grammY, long polling.
+- Bot: Node.js, TypeScript, grammY e long polling.
 - Deploy alvo: Vercel Free para o site e maquina local para bot/worker.
 
 ## Arquitetura
@@ -154,7 +156,7 @@ Bot futuro (`.env.bot`):
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `BOT_TIMEZONE`
-- `REMINDER_CRON`
+- `REMINDER_INTERVAL_MINUTES`
 
 Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend ou na Vercel do site.
 
@@ -179,6 +181,7 @@ A primeira migration cria:
 - `telegram_links`
 - `bot_pending_confirmations`
 - `notification_preferences`
+- `notification_logs`
 
 Todas as tabelas de dados financeiros possuem `user_id`. Valores monetarios sao
 armazenados como `amount_cents` ou `*_cents` para evitar erro de float.

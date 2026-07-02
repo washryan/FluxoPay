@@ -17,4 +17,5 @@ export const botConfig = {
   supabaseUrl: requiredEnv("SUPABASE_URL"),
   supabaseServiceRoleKey: requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
   timezone: process.env.BOT_TIMEZONE ?? "America/Sao_Paulo",
+  reminderIntervalMinutes: Number(process.env.REMINDER_INTERVAL_MINUTES ?? 1440),
 };

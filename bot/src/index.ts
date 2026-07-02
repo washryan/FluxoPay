@@ -8,6 +8,7 @@ import {
 } from "./confirmations";
 import { botConfig } from "./config";
 import { getActiveLink, linkTelegramAccount } from "./links";
+import { startNotificationWorker } from "./notifications";
 import { parseFinancialMessage } from "./parser";
 import { getMonthlySummary } from "./summary";
 import { normalizeText } from "./utils";
@@ -141,4 +142,5 @@ bot.catch((error) => {
 });
 
 console.log("FluxoPay Telegram bot running with long polling.");
+startNotificationWorker(bot);
 bot.start();
