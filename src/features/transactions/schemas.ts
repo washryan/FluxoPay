@@ -7,6 +7,7 @@ export const paymentMethodOptions = [
   "debit_card",
   "credit_card",
   "bank_transfer",
+  "boleto",
   "other",
 ] as const;
 

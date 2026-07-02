@@ -19,6 +19,7 @@ import {
 import { PresetCardPicker } from "@/features/cards/preset-card-picker";
 import { getCardPreset } from "@/features/cards/presets";
 import { CreditCardPurchaseForm } from "@/features/cards/purchase-form";
+import { InvoicePaymentDialog } from "@/features/cards/invoice-payment-dialog";
 import { billStatusLabels, billStatusStyles } from "@/features/bills/constants";
 import { getCategories } from "@/features/categories/data";
 import { syncOverdueStatuses } from "@/features/overdue/sync";
@@ -333,26 +334,11 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                         </p>
                       </div>
                       {invoice.open_cents > 0 ? (
-                        <form action={markInvoiceAsPaid}>
-                          <input
-                            name="card_id"
-                            type="hidden"
-                            value={invoice.card_id}
-                          />
-                          <input
-                            name="invoice_month"
-                            type="hidden"
-                            value={invoice.invoice_month}
-                          />
-                          <ConfirmButton
-                            className="h-10 px-4 text-sm"
-                            message={`Pagar a fatura de ${invoice.card_name} no valor em aberto de ${formatCurrencyFromCents(invoice.open_cents)}?`}
-                            pendingLabel="Pagando..."
-                            variant="dark"
-                          >
-                            Pagar fatura
-                          </ConfirmButton>
-                        </form>
+                        <InvoicePaymentDialog
+                          action={markInvoiceAsPaid}
+                          cards={cardsResult.cards}
+                          invoice={invoice}
+                        />
                       ) : null}
                     </div>
                   </div>

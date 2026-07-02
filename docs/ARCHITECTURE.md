@@ -111,6 +111,12 @@ Fase 3: contas e cartoes
 - Geracao automatica de parcelas por fechamento e vencimento.
 - Faturas consolidadas por cartao e mes.
 - Pagamento de parcela ou fatura com criacao de transacao de saida.
+- Pagamento de fatura sempre usa categoria `Fatura`, criada automaticamente por
+  usuario quando ainda nao existir.
+- Fatura paga com outro cartao gera uma nova compra/parcelamento no cartao de
+  pagamento, mas essas parcelas nao criam nova transacao ao serem pagas. A
+  transacao da fatura original ja registra o valor total pago e evita dupla
+  contagem no saldo.
 - Status automatico de vencidos para contas e parcelas.
 - Confirmacao no cliente antes de pagar, cancelar ou excluir.
 

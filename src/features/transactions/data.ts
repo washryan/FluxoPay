@@ -19,6 +19,7 @@ export type Transaction = {
     | "debit_card"
     | "credit_card"
     | "bank_transfer"
+    | "boleto"
     | "other";
   transaction_date: string;
   source: "web" | "telegram" | "import";

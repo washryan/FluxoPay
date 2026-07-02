@@ -9,5 +9,6 @@ export const paymentMethodLabels = {
   debit_card: "Débito",
   credit_card: "Crédito",
   bank_transfer: "Transferência",
+  boleto: "Boleto",
   other: "Outro",
 };

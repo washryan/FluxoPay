@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
   creditCardPurchaseSchema,
   creditCardSchema,
+  invoicePaymentSchema,
 } from "@/features/cards/schemas";
 import { parseCurrencyToCents } from "@/features/transactions/money";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +28,67 @@ function todayInSaoPaulo() {
   );
 
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+function slugify(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+async function ensureInvoiceCategory(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const slug = "fatura";
+  const { data: existing, error: existingError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error("invoice_category_lookup_failed");
+  }
+
+  if (existing) {
+    return existing.id as string;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("categories")
+    .insert({
+      user_id: userId,
+      name: "Fatura",
+      slug,
+      color: "#0f172a",
+      type: "expense",
+      is_default: false,
+    })
+    .select("id")
+    .single();
+
+  if (!createError && created) {
+    return created.id as string;
+  }
+
+  const { data: fallback, error: fallbackError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("slug", slugify("Fatura"))
+    .single();
+
+  if (fallbackError || !fallback) {
+    throw new Error("invoice_category_create_failed");
+  }
+
+  return fallback.id as string;
 }
 
 export async function createCreditCard(formData: FormData) {
@@ -129,6 +191,7 @@ export async function createCreditCardPurchase(formData: FormData) {
       p_description: parsed.data.description,
       p_installments_count: parsed.data.installments_count,
       p_purchase_date: parsed.data.purchase_date,
+      p_skip_transaction_on_payment: false,
       p_total_amount_cents: totalAmountCents,
     },
   );
@@ -175,12 +238,14 @@ type InstallmentPaymentRow = {
         description: string;
         category_id: string | null;
         installments_count: number;
+        skip_transaction_on_payment: boolean;
         credit_cards: { name: string } | { name: string }[] | null;
       }
     | {
         description: string;
         category_id: string | null;
         installments_count: number;
+        skip_transaction_on_payment: boolean;
         credit_cards: { name: string } | { name: string }[] | null;
       }[]
     | null;
@@ -224,6 +289,7 @@ export async function markInstallmentAsPaid(formData: FormData) {
         description,
         category_id,
         installments_count,
+        skip_transaction_on_payment,
         credit_cards(name)
       )
       `,
@@ -248,6 +314,33 @@ export async function markInstallmentAsPaid(formData: FormData) {
 
   const purchase = firstRelation(installment.credit_card_purchases);
   const card = firstRelation(purchase?.credit_cards ?? null);
+
+  if (purchase?.skip_transaction_on_payment) {
+    const { error: updateError } = await supabase
+      .from("installments")
+      .update({ status: "paid" })
+      .eq("id", installment.id)
+      .eq("user_id", user.id);
+
+    if (updateError) {
+      cardsRedirect({ error: "Não foi possível marcar a parcela como paga." });
+    }
+
+    revalidatePath("/cards");
+    revalidatePath("/dashboard");
+    cardsRedirect({
+      success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
+    });
+  }
+
+  let invoiceCategoryId: string;
+
+  try {
+    invoiceCategoryId = await ensureInvoiceCategory(supabase, user.id);
+  } catch {
+    cardsRedirect({ error: "Não foi possível preparar a categoria Fatura." });
+  }
+
   const { data: transaction, error: transactionError } = await supabase
     .from("transactions")
     .insert({
@@ -255,7 +348,7 @@ export async function markInstallmentAsPaid(formData: FormData) {
       type: "expense",
       amount_cents: installment.amount_cents,
       description: `Pagamento parcela: ${purchase?.description ?? "Cartão"}`,
-      category_id: purchase?.category_id ?? null,
+      category_id: invoiceCategoryId,
       payment_method: "bank_transfer",
       transaction_date: todayInSaoPaulo(),
       source: "web",
@@ -326,11 +419,28 @@ type InvoicePaymentRow = {
 };
 
 export async function markInvoiceAsPaid(formData: FormData) {
-  const cardId = String(formData.get("card_id") ?? "");
-  const month = String(formData.get("invoice_month") ?? "");
+  const parsed = invoicePaymentSchema.safeParse({
+    card_id: formData.get("card_id"),
+    invoice_month: formData.get("invoice_month"),
+    payment_method: formData.get("payment_method"),
+    paid_amount: formData.get("paid_amount"),
+    payment_credit_card_id: formData.get("payment_credit_card_id"),
+    credit_is_installment: formData.get("credit_is_installment"),
+    credit_installments_count: formData.get("credit_installments_count"),
+    credit_installment_amount: formData.get("credit_installment_amount"),
+  });
+
+  if (!parsed.success) {
+    cardsRedirect({
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    });
+  }
+
+  const cardId = parsed.data.card_id;
+  const month = parsed.data.invoice_month;
   const range = monthRange(month);
 
-  if (!cardId || !range) {
+  if (!range) {
     cardsRedirect({ error: "Fatura inválida." });
   }
 
@@ -373,29 +483,112 @@ export async function markInvoiceAsPaid(formData: FormData) {
     cardsRedirect({ success: "Fatura já estava paga." });
   }
 
-  const totalCents = installments.reduce(
+  const openCents = installments.reduce(
     (total, installment) => total + installment.amount_cents,
     0,
   );
   const purchase = firstRelation(installments[0]?.credit_card_purchases ?? null);
   const card = firstRelation(purchase?.credit_cards ?? null);
+  let invoiceCategoryId: string;
+
+  try {
+    invoiceCategoryId = await ensureInvoiceCategory(supabase, user.id);
+  } catch {
+    cardsRedirect({ error: "Não foi possível preparar a categoria Fatura." });
+  }
+
+  const isCreditPayment = parsed.data.payment_method === "credit_card";
+  const paidCents =
+    isCreditPayment && parsed.data.credit_is_installment === "yes"
+      ? (parsed.data.credit_installments_count ?? 1) *
+        (parseCurrencyToCents(parsed.data.credit_installment_amount ?? "") ?? 0)
+      : (parseCurrencyToCents(parsed.data.paid_amount ?? "") ?? 0);
+
+  if (paidCents <= 0) {
+    cardsRedirect({ error: "Informe um valor pago maior que zero." });
+  }
+
+  if (paidCents < openCents) {
+    cardsRedirect({
+      error:
+        "Pagamento parcial de fatura ainda não está disponível. Informe um valor igual ou maior que o valor em aberto.",
+    });
+  }
+
+  const interestCents = paidCents - openCents;
+  const paymentDescription =
+    interestCents > 0
+      ? `Pagamento fatura ${card?.name ?? "cartão"} ${month} com juros`
+      : `Pagamento fatura ${card?.name ?? "cartão"} ${month}`;
   const { data: transaction, error: transactionError } = await supabase
     .from("transactions")
     .insert({
       user_id: user.id,
       type: "expense",
-      amount_cents: totalCents,
-      description: `Pagamento fatura ${card?.name ?? "cartão"} ${month}`,
-      category_id: null,
-      payment_method: "bank_transfer",
+      amount_cents: paidCents,
+      description: paymentDescription,
+      category_id: invoiceCategoryId,
+      payment_method: parsed.data.payment_method,
       transaction_date: todayInSaoPaulo(),
       source: "web",
+      notes:
+        interestCents > 0
+          ? `Fatura em aberto: ${openCents} centavos. Juros/taxas: ${interestCents} centavos.`
+          : null,
     })
     .select("id")
     .single();
 
   if (transactionError || !transaction) {
     cardsRedirect({ error: "Não foi possível criar o pagamento da fatura." });
+  }
+
+  let transferredPurchaseId: string | null = null;
+
+  if (isCreditPayment) {
+    const paymentCardId = parsed.data.payment_credit_card_id;
+
+    if (!paymentCardId || paymentCardId === cardId) {
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Selecione outro cartão para pagar esta fatura no crédito.",
+      });
+    }
+
+    const installmentsCount =
+      parsed.data.credit_is_installment === "yes"
+        ? (parsed.data.credit_installments_count ?? 1)
+        : 1;
+
+    const { data: transferredId, error: transferredError } = await supabase.rpc(
+      "create_credit_card_purchase_with_installments",
+      {
+        p_category_id: invoiceCategoryId,
+        p_credit_card_id: paymentCardId,
+        p_description: paymentDescription,
+        p_installments_count: installmentsCount,
+        p_purchase_date: todayInSaoPaulo(),
+        p_skip_transaction_on_payment: true,
+        p_total_amount_cents: paidCents,
+      },
+    );
+
+    if (transferredError || !transferredId) {
+      await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transaction.id)
+        .eq("user_id", user.id);
+      cardsRedirect({
+        error: "Não foi possível criar as parcelas no cartão de pagamento.",
+      });
+    }
+
+    transferredPurchaseId = transferredId as string;
   }
 
   const ids = installments.map((installment) => installment.id);
@@ -409,6 +602,14 @@ export async function markInvoiceAsPaid(formData: FormData) {
     .eq("user_id", user.id);
 
   if (updateError) {
+    if (transferredPurchaseId) {
+      await supabase
+        .from("credit_card_purchases")
+        .delete()
+        .eq("id", transferredPurchaseId)
+        .eq("user_id", user.id);
+    }
+
     await supabase
       .from("transactions")
       .delete()
