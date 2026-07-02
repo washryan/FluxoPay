@@ -6,12 +6,17 @@ type CreditCardPurchaseFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   cards: CreditCard[];
   categories: Category[];
+  returnState?: {
+    invoiceSearch: string;
+    invoiceStatus: string;
+  };
 };
 
 export function CreditCardPurchaseForm({
   action,
   cards,
   categories,
+  returnState,
 }: CreditCardPurchaseFormProps) {
   const hasCards = cards.length > 0;
 
@@ -20,6 +25,18 @@ export function CreditCardPurchaseForm({
       action={action}
       className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
     >
+      <input name="cards_return_anchor" type="hidden" value="faturas" />
+      <input
+        name="cards_invoice_status"
+        type="hidden"
+        value={returnState?.invoiceStatus ?? "all"}
+      />
+      <input
+        name="cards_invoice_search"
+        type="hidden"
+        value={returnState?.invoiceSearch ?? ""}
+      />
+
       <h2 className="text-lg font-semibold">Nova compra no cartão</h2>
       <p className="mt-1 text-sm leading-6 text-slate-500">
         Registre uma compra e o FluxoPay gera as parcelas pela data de

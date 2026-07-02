@@ -12,9 +12,31 @@ import {
 import { parseCurrencyToCents } from "@/features/transactions/money";
 import { createClient } from "@/lib/supabase/server";
 
-function cardsRedirect(params: Record<string, string>): never {
+function cardsRedirect(
+  params: Record<string, string>,
+  formData?: FormData,
+): never {
   const query = new URLSearchParams(params);
-  redirect(`/cards?${query.toString()}`);
+  const invoiceStatus = String(formData?.get("cards_invoice_status") ?? "");
+  const invoiceSearch = String(formData?.get("cards_invoice_search") ?? "");
+  const anchor = String(formData?.get("cards_return_anchor") ?? "");
+
+  if (
+    invoiceStatus === "paid" ||
+    invoiceStatus === "open" ||
+    invoiceStatus === "overdue"
+  ) {
+    query.set("invoiceStatus", invoiceStatus);
+  }
+
+  if (invoiceSearch.trim()) {
+    query.set("q", invoiceSearch.trim());
+  }
+
+  const queryString = query.toString();
+  const hash = /^[a-z0-9-]+$/i.test(anchor) ? `#${anchor}` : "";
+
+  redirect(`/cards${queryString ? `?${queryString}` : ""}${hash}`);
 }
 
 function todayInSaoPaulo() {
@@ -167,7 +189,10 @@ export async function createCreditCard(formData: FormData) {
   });
 
   if (!parsed.success) {
-    cardsRedirect({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." });
+    cardsRedirect(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+      formData,
+    );
   }
 
   const limitCents = parsed.data.limit
@@ -213,7 +238,10 @@ export async function updateCreditCard(formData: FormData) {
   });
 
   if (!parsed.success) {
-    cardsRedirect({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." });
+    cardsRedirect(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+      formData,
+    );
   }
 
   const limitCents = parsed.data.limit
@@ -289,7 +317,10 @@ export async function createCreditCardPurchase(formData: FormData) {
   const totalAmountCents = parseCurrencyToCents(parsed.data.total_amount);
 
   if (!totalAmountCents || totalAmountCents <= 0) {
-    cardsRedirect({ error: "Informe um valor de compra maior que zero." });
+    cardsRedirect(
+      { error: "Informe um valor de compra maior que zero." },
+      formData,
+    );
   }
 
   const supabase = await createClient();
@@ -315,19 +346,22 @@ export async function createCreditCardPurchase(formData: FormData) {
   );
 
   if (error) {
-    cardsRedirect({ error: "Não foi possível registrar a compra." });
+    cardsRedirect(
+      { error: "Não foi possível registrar a compra." },
+      formData,
+    );
   }
 
   revalidatePath("/cards");
   revalidatePath("/resumo");
-  cardsRedirect({ success: "Compra parcelada registrada." });
+  cardsRedirect({ success: "Compra parcelada registrada." }, formData);
 }
 
 export async function deleteCreditCardPurchase(formData: FormData) {
   const id = String(formData.get("id") ?? "");
 
   if (!id) {
-    cardsRedirect({ error: "Compra inválida." });
+    cardsRedirect({ error: "Compra inválida." }, formData);
   }
 
   const supabase = await createClient();
@@ -348,14 +382,20 @@ export async function deleteCreditCardPurchase(formData: FormData) {
     .limit(1);
 
   if (paidLookupError) {
-    cardsRedirect({ error: "Não foi possível verificar a compra." });
+    cardsRedirect(
+      { error: "Não foi possível verificar a compra." },
+      formData,
+    );
   }
 
   if ((paidInstallments ?? []).length > 0) {
-    cardsRedirect({
-      error:
-        "Não é possível excluir uma compra com parcela paga. Revogue o pagamento antes.",
-    });
+    cardsRedirect(
+      {
+        error:
+          "Não é possível excluir uma compra com parcela paga. Revogue o pagamento antes.",
+      },
+      formData,
+    );
   }
 
   const { error } = await supabase
@@ -365,20 +405,20 @@ export async function deleteCreditCardPurchase(formData: FormData) {
     .eq("user_id", user.id);
 
   if (error) {
-    cardsRedirect({ error: "Não foi possível excluir a compra." });
+    cardsRedirect({ error: "Não foi possível excluir a compra." }, formData);
   }
 
   revalidatePath("/cards");
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
-  cardsRedirect({ success: "Compra excluída." });
+  cardsRedirect({ success: "Compra excluída." }, formData);
 }
 
 export async function revokeInvoicePayment(formData: FormData) {
   const transactionId = String(formData.get("transaction_id") ?? "");
 
   if (!transactionId) {
-    cardsRedirect({ error: "Pagamento inválido." });
+    cardsRedirect({ error: "Pagamento inválido." }, formData);
   }
 
   const supabase = await createClient();
@@ -395,16 +435,22 @@ export async function revokeInvoicePayment(formData: FormData) {
   });
 
   if (error) {
-    cardsRedirect({
-      error: "Não foi possível revogar o pagamento da fatura.",
-    });
+    cardsRedirect(
+      {
+        error: "Não foi possível revogar o pagamento da fatura.",
+      },
+      formData,
+    );
   }
 
   revalidatePath("/cards");
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
-  cardsRedirect({ success: "Pagamento revogado. A fatura voltou para em aberto." });
+  cardsRedirect(
+    { success: "Pagamento revogado. A fatura voltou para em aberto." },
+    formData,
+  );
 }
 
 export async function moveInstallmentInvoice(formData: FormData) {
@@ -412,7 +458,7 @@ export async function moveInstallmentInvoice(formData: FormData) {
   const direction = String(formData.get("direction") ?? "");
 
   if (!id || (direction !== "previous" && direction !== "next")) {
-    cardsRedirect({ error: "Movimentação de parcela inválida." });
+    cardsRedirect({ error: "Movimentação de parcela inválida." }, formData);
   }
 
   const supabase = await createClient();
@@ -436,18 +482,21 @@ export async function moveInstallmentInvoice(formData: FormData) {
         ? "Só é possível mover parcelas em aberto ou atrasadas."
         : "Não foi possível mover a parcela para outra fatura.";
 
-    cardsRedirect({ error: message });
+    cardsRedirect({ error: message }, formData);
   }
 
   revalidatePath("/cards");
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
-  cardsRedirect({
-    success:
-      direction === "previous"
-        ? "Parcela adiantada para a fatura anterior."
-        : "Parcela atrasada para a próxima fatura.",
-  });
+  cardsRedirect(
+    {
+      success:
+        direction === "previous"
+          ? "Parcela adiantada para a fatura anterior."
+          : "Parcela atrasada para a próxima fatura.",
+    },
+    formData,
+  );
 }
 
 type InstallmentPaymentRow = {
@@ -487,7 +536,7 @@ export async function markInstallmentAsPaid(formData: FormData) {
   const id = String(formData.get("id") ?? "");
 
   if (!id) {
-    cardsRedirect({ error: "Parcela inválida." });
+    cardsRedirect({ error: "Parcela inválida." }, formData);
   }
 
   const supabase = await createClient();
@@ -525,15 +574,18 @@ export async function markInstallmentAsPaid(formData: FormData) {
   const installment = data as unknown as InstallmentPaymentRow | null;
 
   if (error || !installment) {
-    cardsRedirect({ error: "Parcela não encontrada." });
+    cardsRedirect({ error: "Parcela não encontrada." }, formData);
   }
 
   if (installment.status === "paid" || installment.paid_transaction_id) {
-    cardsRedirect({ success: "Parcela já estava paga." });
+    cardsRedirect({ success: "Parcela já estava paga." }, formData);
   }
 
   if (installment.status === "cancelled") {
-    cardsRedirect({ error: "Parcela cancelada não pode ser paga." });
+    cardsRedirect(
+      { error: "Parcela cancelada não pode ser paga." },
+      formData,
+    );
   }
 
   const purchase = firstRelation(installment.credit_card_purchases);
@@ -547,15 +599,21 @@ export async function markInstallmentAsPaid(formData: FormData) {
       .eq("user_id", user.id);
 
     if (updateError) {
-      cardsRedirect({ error: "Não foi possível marcar a parcela como paga." });
+      cardsRedirect(
+        { error: "Não foi possível marcar a parcela como paga." },
+        formData,
+      );
     }
 
     revalidatePath("/cards");
     revalidatePath("/dashboard");
     revalidatePath("/resumo");
-    cardsRedirect({
-      success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
-    });
+    cardsRedirect(
+      {
+        success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
+      },
+      formData,
+    );
   }
 
   let invoiceCategoryId: string;
@@ -563,7 +621,10 @@ export async function markInstallmentAsPaid(formData: FormData) {
   try {
     invoiceCategoryId = await ensureInvoiceCategory(supabase, user.id);
   } catch {
-    cardsRedirect({ error: "Não foi possível preparar a categoria Fatura." });
+    cardsRedirect(
+      { error: "Não foi possível preparar a categoria Fatura." },
+      formData,
+    );
   }
 
   const { data: transaction, error: transactionError } = await supabase
@@ -582,7 +643,10 @@ export async function markInstallmentAsPaid(formData: FormData) {
     .single();
 
   if (transactionError || !transaction) {
-    cardsRedirect({ error: "Não foi possível criar a transação de pagamento." });
+    cardsRedirect(
+      { error: "Não foi possível criar a transação de pagamento." },
+      formData,
+    );
   }
 
   const { error: updateError } = await supabase
@@ -600,16 +664,22 @@ export async function markInstallmentAsPaid(formData: FormData) {
       .delete()
       .eq("id", transaction.id)
       .eq("user_id", user.id);
-    cardsRedirect({ error: "Não foi possível marcar a parcela como paga." });
+    cardsRedirect(
+      { error: "Não foi possível marcar a parcela como paga." },
+      formData,
+    );
   }
 
   revalidatePath("/cards");
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
-  cardsRedirect({
-    success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
-  });
+  cardsRedirect(
+    {
+      success: `Parcela paga${card?.name ? ` no ${card.name}` : ""}.`,
+    },
+    formData,
+  );
 }
 
 function monthRange(month: string) {
@@ -676,9 +746,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
   });
 
   if (!parsed.success) {
-    cardsRedirect({
-      error: parsed.error.issues[0]?.message ?? "Dados inválidos.",
-    });
+    cardsRedirect(
+      {
+        error: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+      },
+      formData,
+    );
   }
 
   const cardId = parsed.data.card_id;
@@ -687,7 +760,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
   const range = monthRange(month);
 
   if (!range) {
-    cardsRedirect({ error: "Fatura inválida." });
+    cardsRedirect({ error: "Fatura inválida." }, formData);
   }
 
   const supabase = await createClient();
@@ -730,11 +803,11 @@ export async function markInvoiceAsPaid(formData: FormData) {
   const installments = (data ?? []) as unknown as InvoicePaymentRow[];
 
   if (error) {
-    cardsRedirect({ error: "Não foi possível carregar a fatura." });
+    cardsRedirect({ error: "Não foi possível carregar a fatura." }, formData);
   }
 
   if (installments.length === 0) {
-    cardsRedirect({ success: "Fatura já estava paga." });
+    cardsRedirect({ success: "Fatura já estava paga." }, formData);
   }
 
   const openCents = installments.reduce(
@@ -748,7 +821,10 @@ export async function markInvoiceAsPaid(formData: FormData) {
   try {
     invoiceCategoryId = await ensureInvoiceCategory(supabase, user.id);
   } catch {
-    cardsRedirect({ error: "Não foi possível preparar a categoria Fatura." });
+    cardsRedirect(
+      { error: "Não foi possível preparar a categoria Fatura." },
+      formData,
+    );
   }
 
   const isCreditPayment = parsed.data.payment_method === "credit_card";
@@ -759,7 +835,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
       : (parseCurrencyToCents(parsed.data.paid_amount ?? "") ?? 0);
 
   if (paidCents <= 0) {
-    cardsRedirect({ error: "Informe um valor pago maior que zero." });
+    cardsRedirect({ error: "Informe um valor pago maior que zero." }, formData);
   }
 
   const remainingCents = openCents - paidCents;
@@ -798,7 +874,10 @@ export async function markInvoiceAsPaid(formData: FormData) {
     .single();
 
   if (transactionError || !transaction) {
-    cardsRedirect({ error: "Não foi possível criar o pagamento da fatura." });
+    cardsRedirect(
+      { error: "Não foi possível criar o pagamento da fatura." },
+      formData,
+    );
   }
 
   let transferredPurchaseId: string | null = null;
@@ -813,9 +892,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Selecione outro cartão para pagar esta fatura no crédito.",
-      });
+      cardsRedirect(
+        {
+          error: "Selecione outro cartão para pagar esta fatura no crédito.",
+        },
+        formData,
+      );
     }
 
     const installmentsCount =
@@ -842,9 +924,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Não foi possível criar as parcelas no cartão de pagamento.",
-      });
+      cardsRedirect(
+        {
+          error: "Não foi possível criar as parcelas no cartão de pagamento.",
+        },
+        formData,
+      );
     }
 
     transferredPurchaseId = transferredId as string;
@@ -866,9 +951,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Não foi possível vincular o detalhamento da fatura paga.",
-      });
+      cardsRedirect(
+        {
+          error: "Não foi possível vincular o detalhamento da fatura paga.",
+        },
+        formData,
+      );
     }
   }
 
@@ -889,9 +977,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Não foi possível identificar o vencimento do cartão.",
-      });
+      cardsRedirect(
+        {
+          error: "Não foi possível identificar o vencimento do cartão.",
+        },
+        formData,
+      );
     }
 
     let carriedDueDate: string;
@@ -918,9 +1009,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Não foi possível encontrar a próxima fatura em aberto.",
-      });
+      cardsRedirect(
+        {
+          error: "Não foi possível encontrar a próxima fatura em aberto.",
+        },
+        formData,
+      );
     }
 
     const { data: carriedPurchase, error: carriedPurchaseError } =
@@ -955,9 +1049,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Não foi possível transferir o restante para a próxima fatura.",
-      });
+      cardsRedirect(
+        {
+          error: "Não foi possível transferir o restante para a próxima fatura.",
+        },
+        formData,
+      );
     }
 
     carriedPurchaseId = carriedPurchase.id as string;
@@ -993,9 +1090,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({
-        error: "Não foi possível criar a parcela do restante.",
-      });
+      cardsRedirect(
+        {
+          error: "Não foi possível criar a parcela do restante.",
+        },
+        formData,
+      );
     }
   }
 
@@ -1015,9 +1115,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         await supabase.rpc("revoke_invoice_payment", {
           p_transaction_id: transaction.id,
         });
-        cardsRedirect({
-          error: "Não foi possível identificar a compra da parcela.",
-        });
+        cardsRedirect(
+          {
+            error: "Não foi possível identificar a compra da parcela.",
+          },
+          formData,
+        );
       }
 
       if (paymentLeftCents >= installment.amount_cents) {
@@ -1034,9 +1137,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
           await supabase.rpc("revoke_invoice_payment", {
             p_transaction_id: transaction.id,
           });
-          cardsRedirect({
-            error: "Não foi possível abater o pagamento parcial.",
-          });
+          cardsRedirect(
+            {
+              error: "Não foi possível abater o pagamento parcial.",
+            },
+            formData,
+          );
         }
 
         paymentLeftCents -= installment.amount_cents;
@@ -1061,9 +1167,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         await supabase.rpc("revoke_invoice_payment", {
           p_transaction_id: transaction.id,
         });
-        cardsRedirect({
-          error: "Não foi possível dividir a parcela parcialmente paga.",
-        });
+        cardsRedirect(
+          {
+            error: "Não foi possível dividir a parcela parcialmente paga.",
+          },
+          formData,
+        );
       }
 
       const { data: remainingPurchase, error: remainingPurchaseError } =
@@ -1088,9 +1197,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         await supabase.rpc("revoke_invoice_payment", {
           p_transaction_id: transaction.id,
         });
-        cardsRedirect({
-          error: "Não foi possível manter o restante na fatura atual.",
-        });
+        cardsRedirect(
+          {
+            error: "Não foi possível manter o restante na fatura atual.",
+          },
+          formData,
+        );
       }
 
       const { error: remainingInstallmentError } = await supabase
@@ -1109,9 +1221,12 @@ export async function markInvoiceAsPaid(formData: FormData) {
         await supabase.rpc("revoke_invoice_payment", {
           p_transaction_id: transaction.id,
         });
-        cardsRedirect({
-          error: "Não foi possível criar o restante na fatura atual.",
-        });
+        cardsRedirect(
+          {
+            error: "Não foi possível criar o restante na fatura atual.",
+          },
+          formData,
+        );
       }
 
       paymentLeftCents = 0;
@@ -1149,7 +1264,10 @@ export async function markInvoiceAsPaid(formData: FormData) {
         .delete()
         .eq("id", transaction.id)
         .eq("user_id", user.id);
-      cardsRedirect({ error: "Não foi possível marcar a fatura como paga." });
+      cardsRedirect(
+        { error: "Não foi possível marcar a fatura como paga." },
+        formData,
+      );
     }
   }
 
@@ -1157,11 +1275,14 @@ export async function markInvoiceAsPaid(formData: FormData) {
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
-  cardsRedirect({
-    success: isPartialPayment
-      ? shouldCarryRemaining
-        ? "Pagamento parcial registrado. O restante foi enviado para a próxima fatura."
-        : "Pagamento parcial registrado. O restante continua nesta fatura."
-      : "Fatura marcada como paga.",
-  });
+  cardsRedirect(
+    {
+      success: isPartialPayment
+        ? shouldCarryRemaining
+          ? "Pagamento parcial registrado. O restante foi enviado para a próxima fatura."
+          : "Pagamento parcial registrado. O restante continua nesta fatura."
+        : "Fatura marcada como paga.",
+    },
+    formData,
+  );
 }

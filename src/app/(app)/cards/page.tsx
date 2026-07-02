@@ -68,6 +68,22 @@ function filterHref({
   return value ? `/cards?${value}` : "/cards";
 }
 
+function CardsReturnState({
+  invoiceSearch,
+  invoiceStatus,
+}: {
+  invoiceSearch: string;
+  invoiceStatus: string;
+}) {
+  return (
+    <>
+      <input name="cards_return_anchor" type="hidden" value="faturas" />
+      <input name="cards_invoice_status" type="hidden" value={invoiceStatus} />
+      <input name="cards_invoice_search" type="hidden" value={invoiceSearch} />
+    </>
+  );
+}
+
 export default async function CardsPage({ searchParams }: CardsPageProps) {
   await syncOverdueStatuses();
 
@@ -131,6 +147,10 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
     categoriesResult.error ??
     installmentsResult.error ??
     invoicesResult.error;
+  const cardsReturnState = {
+    invoiceSearch,
+    invoiceStatus: activeInvoiceStatus,
+  };
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -350,6 +370,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
             action={createCreditCardPurchase}
             cards={cardsResult.cards}
             categories={categoriesResult.categories}
+            returnState={cardsReturnState}
           />
 
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
@@ -419,7 +440,10 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
           </article>
         </section>
 
-        <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <section
+          className="scroll-mt-6 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
+          id="faturas"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Faturas consolidadas</h2>
@@ -529,9 +553,11 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                           action={markInvoiceAsPaid}
                           cards={cardsResult.cards}
                           invoice={invoice}
+                          returnState={cardsReturnState}
                         />
                       ) : invoice.payment_transaction_id ? (
                         <form action={revokeInvoicePayment}>
+                          <CardsReturnState {...cardsReturnState} />
                           <input
                             name="transaction_id"
                             type="hidden"
@@ -633,6 +659,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                           item.status !== "cancelled" ? (
                             <div className="flex flex-wrap justify-start gap-2 md:justify-end">
                               <form action={moveInstallmentInvoice}>
+                                <CardsReturnState {...cardsReturnState} />
                                 <input name="id" type="hidden" value={item.id} />
                                 <input
                                   name="direction"
@@ -648,6 +675,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                                 </ConfirmButton>
                               </form>
                               <form action={moveInstallmentInvoice}>
+                                <CardsReturnState {...cardsReturnState} />
                                 <input name="id" type="hidden" value={item.id} />
                                 <input
                                   name="direction"
@@ -663,6 +691,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                                 </ConfirmButton>
                               </form>
                               <form action={markInstallmentAsPaid}>
+                                <CardsReturnState {...cardsReturnState} />
                                 <input name="id" type="hidden" value={item.id} />
                                 <ConfirmButton
                                   className="h-9"
@@ -675,6 +704,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                               </form>
                               {item.can_delete_purchase ? (
                                 <form action={deleteCreditCardPurchase}>
+                                  <CardsReturnState {...cardsReturnState} />
                                   <input
                                     name="id"
                                     type="hidden"
@@ -694,6 +724,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                           ) : item.paid_transaction_id &&
                             !invoice.payment_transaction_id ? (
                             <form action={revokeInvoicePayment}>
+                              <CardsReturnState {...cardsReturnState} />
                               <input
                                 name="transaction_id"
                                 type="hidden"

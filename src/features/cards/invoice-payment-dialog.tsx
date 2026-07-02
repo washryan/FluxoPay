@@ -10,6 +10,10 @@ type InvoicePaymentDialogProps = {
   action: (formData: FormData) => void | Promise<void>;
   cards: CreditCard[];
   invoice: CreditCardInvoice;
+  returnState?: {
+    invoiceSearch: string;
+    invoiceStatus: string;
+  };
 };
 
 function formatAmountInput(valueInCents: number) {
@@ -30,6 +34,7 @@ export function InvoicePaymentDialog({
   action,
   cards,
   invoice,
+  returnState,
 }: InvoicePaymentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<
@@ -76,6 +81,17 @@ export function InvoicePaymentDialog({
             </div>
 
             <form action={action} className="mt-5 grid gap-4">
+              <input name="cards_return_anchor" type="hidden" value="faturas" />
+              <input
+                name="cards_invoice_status"
+                type="hidden"
+                value={returnState?.invoiceStatus ?? "all"}
+              />
+              <input
+                name="cards_invoice_search"
+                type="hidden"
+                value={returnState?.invoiceSearch ?? ""}
+              />
               <input name="card_id" type="hidden" value={invoice.card_id} />
               <input
                 name="invoice_month"
