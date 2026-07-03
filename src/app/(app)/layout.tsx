@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   BarChart3,
   Bot,
+  CalendarClock,
   CreditCard,
   FolderKanban,
   LayoutDashboard,
@@ -17,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 const navigation = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/resumo", icon: BarChart3, label: "Resumo" },
+  { href: "/vencimentos", icon: CalendarClock, label: "Vencimentos" },
   { href: "/transactions", icon: ListChecks, label: "Transações" },
   { href: "/categories", icon: Tags, label: "Categorias" },
   { href: "/bills", icon: ReceiptText, label: "Contas" },

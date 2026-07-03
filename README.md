@@ -31,6 +31,10 @@ Implementado nesta etapa:
 - Parser do Telegram integrado às categorias reais do usuário.
 - Worker local para lembretes de contas, faturas e relatorios.
 - Logs de notificacao para evitar alertas repetidos.
+- Tela `/vencimentos` com credito pendente, credito atrasado, contas
+  pendentes e contas atrasadas em um unico lugar.
+- View `financial_obligations` no Supabase como fonte unica para agenda
+  financeira e proximos lembretes do bot.
 
 Ainda nao implementado:
 
@@ -182,6 +186,10 @@ A primeira migration cria:
 - `bot_pending_confirmations`
 - `notification_preferences`
 - `notification_logs`
+
+A view `financial_obligations` consolida contas (`bills`) e parcelas de cartao
+(`installments`) com status `pending` ou `overdue`. Ela alimenta a tela
+`/vencimentos` e deve ser usada como base para evoluir notificacoes do bot.
 
 Todas as tabelas de dados financeiros possuem `user_id`. Valores monetarios sao
 armazenados como `amount_cents` ou `*_cents` para evitar erro de float.
