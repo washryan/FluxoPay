@@ -19,6 +19,7 @@ import {
 import { ConfirmButton } from "@/components/confirm-button";
 import { SubmitButton } from "@/components/submit-button";
 import {
+  adjustCreditCardPurchaseInstallments,
   createCreditCard,
   createCreditCardPurchase,
   deleteCreditCard,
@@ -814,6 +815,52 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                                         Excluir compra
                                       </ConfirmButton>
                                     </form>
+                                  ) : null}
+                                  {!item.source_invoice_transaction_id &&
+                                  item.installments_count > 1 ? (
+                                    <details className="group w-full rounded-2xl border border-slate-200 bg-slate-50 p-2 md:w-64">
+                                      <summary className="cursor-pointer list-none text-center text-xs font-bold uppercase tracking-[0.16em] text-slate-500 transition hover:text-slate-950 [&::-webkit-details-marker]:hidden">
+                                        Editar parcelas
+                                      </summary>
+                                      <form
+                                        action={
+                                          adjustCreditCardPurchaseInstallments
+                                        }
+                                        className="mt-3 grid gap-2"
+                                      >
+                                        <CardsReturnState
+                                          {...cardsReturnState}
+                                        />
+                                        <input
+                                          name="id"
+                                          type="hidden"
+                                          value={item.purchase_id}
+                                        />
+                                        <label className="text-xs font-semibold text-slate-500">
+                                          Total correto
+                                          <input
+                                            className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                                            defaultValue={
+                                              item.installments_count
+                                            }
+                                            max={item.installments_count - 1}
+                                            min={1}
+                                            name="installments_count"
+                                            type="number"
+                                          />
+                                        </label>
+                                        <SubmitButton
+                                          className="h-9 bg-slate-950 text-xs text-white hover:bg-emerald-700"
+                                          pendingLabel="Ajustando..."
+                                        >
+                                          Salvar ajuste
+                                        </SubmitButton>
+                                        <p className="text-xs leading-relaxed text-slate-500">
+                                          Remove apenas as parcelas finais não
+                                          pagas.
+                                        </p>
+                                      </form>
+                                    </details>
                                   ) : null}
                                 </div>
                               ) : item.paid_transaction_id &&

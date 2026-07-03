@@ -45,6 +45,15 @@ export const creditCardPurchaseSchema = z.object({
   category_id: z.string().trim().optional(),
 });
 
+export const adjustCreditCardPurchaseInstallmentsSchema = z.object({
+  id: z.uuid("Compra inválida."),
+  installments_count: z.coerce
+    .number()
+    .int()
+    .min(1, "Informe pelo menos 1 parcela.")
+    .max(72, "Use no máximo 72 parcelas."),
+});
+
 export const invoicePaymentSchema = z
   .object({
     card_id: z.uuid("Fatura inválida."),

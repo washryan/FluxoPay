@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  adjustCreditCardPurchaseInstallmentsSchema,
   creditCardPurchaseSchema,
   creditCardSchema,
   invoicePaymentSchema,
@@ -412,6 +413,58 @@ export async function deleteCreditCardPurchase(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/resumo");
   cardsRedirect({ success: "Compra excluída." }, formData);
+}
+
+export async function adjustCreditCardPurchaseInstallments(formData: FormData) {
+  const parsed = adjustCreditCardPurchaseInstallmentsSchema.safeParse({
+    id: formData.get("id"),
+    installments_count: formData.get("installments_count"),
+  });
+
+  if (!parsed.success) {
+    cardsRedirect(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos." },
+      formData,
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { error } = await supabase.rpc("adjust_credit_card_purchase_installments", {
+    p_installments_count: parsed.data.installments_count,
+    p_purchase_id: parsed.data.id,
+  });
+
+  if (error) {
+    const message = error.message.includes("purchase_not_found")
+      ? "Compra não encontrada."
+      : error.message.includes("source_invoice_purchase")
+        ? "Parcelamentos gerados por pagamento de fatura devem ser ajustados revogando o pagamento original."
+        : error.message.includes("new_count_must_be_lower")
+          ? "Por enquanto, este ajuste só reduz a quantidade de parcelas da compra."
+          : error.message.includes("paid_removed_installment")
+            ? "Não é possível remover parcelas já pagas. Revogue o pagamento antes de ajustar."
+            : "Não foi possível ajustar as parcelas da compra.";
+
+    cardsRedirect({ error: message }, formData);
+  }
+
+  revalidatePath("/cards");
+  revalidatePath("/dashboard");
+  revalidatePath("/resumo");
+  cardsRedirect(
+    {
+      success: `Compra ajustada para ${parsed.data.installments_count} parcelas.`,
+    },
+    formData,
+  );
 }
 
 export async function revokeInvoicePayment(formData: FormData) {
