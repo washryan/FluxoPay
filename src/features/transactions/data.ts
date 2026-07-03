@@ -56,40 +56,53 @@ function normalizeTransaction(row: TransactionQueryRow): Transaction {
 
 export async function getTransactions(filters: TransactionFilters) {
   const supabase = await createClient();
-  let query = supabase
-    .from("transactions")
-    .select(
-      "id, type, amount_cents, description, category_id, payment_method, transaction_date, source, created_at, categories(name, color)",
-    )
-    .order("transaction_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const pageSize = 1000;
+  const rows: TransactionQueryRow[] = [];
 
-  if (filters.start) {
-    query = query.gte("transaction_date", filters.start);
-  }
+  for (let page = 0; page < 10; page += 1) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+    let query = supabase
+      .from("transactions")
+      .select(
+        "id, type, amount_cents, description, category_id, payment_method, transaction_date, source, created_at, categories(name, color)",
+      )
+      .order("transaction_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  if (filters.end) {
-    query = query.lte("transaction_date", filters.end);
-  }
+    if (filters.start) {
+      query = query.gte("transaction_date", filters.start);
+    }
 
-  if (filters.type && filters.type !== "all") {
-    query = query.eq("type", filters.type);
-  }
+    if (filters.end) {
+      query = query.lte("transaction_date", filters.end);
+    }
 
-  if (filters.category) {
-    query = query.eq("category_id", filters.category);
-  }
+    if (filters.type && filters.type !== "all") {
+      query = query.eq("type", filters.type);
+    }
 
-  const { data, error } = await query.limit(100);
+    if (filters.category) {
+      query = query.eq("category_id", filters.category);
+    }
 
-  if (error) {
-    return { transactions: [] as Transaction[], error: error.message };
+    const { data, error } = await query;
+
+    if (error) {
+      return { transactions: [] as Transaction[], error: error.message };
+    }
+
+    const pageRows = (data ?? []) as unknown as TransactionQueryRow[];
+    rows.push(...pageRows);
+
+    if (pageRows.length < pageSize) {
+      break;
+    }
   }
 
   return {
-    transactions: ((data ?? []) as unknown as TransactionQueryRow[]).map(
-      normalizeTransaction,
-    ),
+    transactions: rows.map(normalizeTransaction),
     error: null,
   };
 }

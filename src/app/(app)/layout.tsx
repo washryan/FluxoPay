@@ -55,7 +55,7 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen bg-[#050914] text-slate-100">
       <div className="mx-auto flex min-h-screen w-full max-w-[1680px] flex-col lg:flex-row">
-        <aside className="shrink-0 border-b border-white/10 bg-[#050914]/95 p-4 backdrop-blur lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:p-5">
+        <aside className="shrink-0 border-b border-white/10 bg-[#050914]/95 p-4 backdrop-blur lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:p-5">
           <div className="flex items-center justify-between gap-4">
             <Link href="/dashboard" className="group flex items-center gap-3">
               <span className="grid size-12 place-items-center rounded-[1.35rem] bg-[linear-gradient(135deg,#052e2b,#10b981_52%,#d9f99d)] text-lg font-black text-white shadow-lg shadow-emerald-950/40 ring-1 ring-white/15 transition group-hover:scale-105">
@@ -91,7 +91,7 @@ export default async function AppLayout({
             </div>
           </div>
 
-          <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0">
+          <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
             {navigation.map((item) => (
               <Link
                 className="group inline-flex min-h-11 items-center gap-3 whitespace-nowrap rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"

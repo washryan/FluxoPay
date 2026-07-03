@@ -49,8 +49,8 @@ export async function getCreditCards() {
   }
 
   const openByCard = new Map<string, number>();
-  const installmentRows =
-    (installmentsResult.data ?? []) as unknown as CardLimitInstallmentRow[];
+  const installmentRows = (installmentsResult.data ??
+    []) as unknown as CardLimitInstallmentRow[];
 
   for (const installment of installmentRows) {
     const purchase = firstRelation(installment.credit_card_purchases);
@@ -61,24 +61,26 @@ export async function getCreditCards() {
 
     openByCard.set(
       purchase.credit_card_id,
-      (openByCard.get(purchase.credit_card_id) ?? 0) +
-        installment.amount_cents,
+      (openByCard.get(purchase.credit_card_id) ?? 0) + installment.amount_cents,
     );
   }
 
   return {
-    cards: ((cardsResult.data ?? []) as Omit<CreditCard, "available_cents" | "open_cents">[]).map(
-      (card) => {
-        const openCents = openByCard.get(card.id) ?? 0;
+    cards: (
+      (cardsResult.data ?? []) as Omit<
+        CreditCard,
+        "available_cents" | "open_cents"
+      >[]
+    ).map((card) => {
+      const openCents = openByCard.get(card.id) ?? 0;
 
-        return {
-          ...card,
-          open_cents: openCents,
-          available_cents:
-            card.limit_cents === null ? null : card.limit_cents - openCents,
-        };
-      },
-    ),
+      return {
+        ...card,
+        open_cents: openCents,
+        available_cents:
+          card.limit_cents === null ? null : card.limit_cents - openCents,
+      };
+    }),
     error: null,
   };
 }
@@ -186,15 +188,18 @@ type UpcomingInstallmentRow = Omit<
   UpcomingInstallment,
   "purchase_description" | "installments_count" | "card_name"
 > & {
-  credit_card_purchases: {
-    description: string;
-    installments_count: number;
-    credit_cards: { name: string } | { name: string }[] | null;
-  } | {
-    description: string;
-    installments_count: number;
-    credit_cards: { name: string } | { name: string }[] | null;
-  }[] | null;
+  credit_card_purchases:
+    | {
+        description: string;
+        installments_count: number;
+        credit_cards: { name: string } | { name: string }[] | null;
+      }
+    | {
+        description: string;
+        installments_count: number;
+        credit_cards: { name: string } | { name: string }[] | null;
+      }[]
+    | null;
 };
 
 export async function getUpcomingInstallments() {
@@ -396,43 +401,60 @@ function invoicePaymentTransactionId(items: CreditCardInvoiceItem[]) {
 
 export async function getCreditCardInvoices() {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("installments")
-    .select(
-      `
-      id,
-      purchase_id,
-      installment_number,
-      amount_cents,
-      due_date,
-      status,
-      paid_transaction_id,
-      credit_card_purchases(
-        description,
-        installments_count,
-        credit_card_id,
-        source_invoice_transaction_id,
-        categories(name, color),
-        credit_cards(name)
-      )
-      `,
-    )
-    .order("due_date", { ascending: false })
-    .limit(120);
+  const pageSize = 1000;
+  const rows: InvoiceInstallmentRow[] = [];
 
-  if (error) {
-    return { error: error.message, invoices: [] as CreditCardInvoice[] };
+  for (let page = 0; page < 10; page += 1) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from("installments")
+      .select(
+        `
+        id,
+        purchase_id,
+        installment_number,
+        amount_cents,
+        due_date,
+        status,
+        paid_transaction_id,
+        credit_card_purchases(
+          description,
+          installments_count,
+          credit_card_id,
+          source_invoice_transaction_id,
+          categories(name, color),
+          credit_cards(name)
+        )
+        `,
+      )
+      .order("due_date", { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      return { error: error.message, invoices: [] as CreditCardInvoice[] };
+    }
+
+    const pageRows = (data ?? []) as unknown as InvoiceInstallmentRow[];
+    rows.push(...pageRows);
+
+    if (pageRows.length < pageSize) {
+      break;
+    }
   }
 
   const grouped = new Map<string, CreditCardInvoice>();
-  const rows = (data ?? []) as unknown as InvoiceInstallmentRow[];
   const purchasesWithPaidInstallments = new Set(
     rows
       .filter((installment) => installment.status === "paid")
       .map((installment) => installment.purchase_id),
   );
   const paidTransactionIds = Array.from(
-    new Set(rows.map((installment) => installment.paid_transaction_id).filter(Boolean)),
+    new Set(
+      rows
+        .map((installment) => installment.paid_transaction_id)
+        .filter(Boolean),
+    ),
   ) as string[];
   const paymentAmountById = new Map<string, number>();
   const sourceTransactionIds = Array.from(
@@ -496,7 +518,8 @@ export async function getCreditCardInvoices() {
       };
     }
 
-    for (const detail of (detailsData ?? []) as unknown as SourceInvoiceDetailRow[]) {
+    for (const detail of (detailsData ??
+      []) as unknown as SourceInvoiceDetailRow[]) {
       if (!detail.paid_transaction_id) {
         continue;
       }
@@ -561,7 +584,9 @@ export async function getCreditCardInvoices() {
       category_color: category?.color ?? null,
       source_invoice_transaction_id: purchase.source_invoice_transaction_id,
       source_invoice_details: purchase.source_invoice_transaction_id
-        ? (sourceDetailsByTransaction.get(purchase.source_invoice_transaction_id) ?? [])
+        ? (sourceDetailsByTransaction.get(
+            purchase.source_invoice_transaction_id,
+          ) ?? [])
         : [],
       can_delete_purchase:
         !purchase.source_invoice_transaction_id &&
@@ -597,7 +622,9 @@ export async function getCreditCardInvoices() {
         ...invoice,
         paid_cents: paidCents,
         interest_cents: Math.max(0, paidCents - invoice.total_cents),
-        items: invoice.items.sort((a, b) => a.due_date.localeCompare(b.due_date)),
+        items: invoice.items.sort((a, b) =>
+          a.due_date.localeCompare(b.due_date),
+        ),
         payment_transaction_id: paymentTransactionId,
         status: invoiceStatus(invoice.items),
       };
