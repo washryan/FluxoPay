@@ -25,7 +25,8 @@ function cardsRedirect(
   if (
     invoiceStatus === "paid" ||
     invoiceStatus === "open" ||
-    invoiceStatus === "overdue"
+    invoiceStatus === "overdue" ||
+    invoiceStatus === "all"
   ) {
     query.set("invoiceStatus", invoiceStatus);
   }
@@ -201,7 +202,7 @@ export async function createCreditCard(formData: FormData) {
     : null;
 
   if (parsed.data.limit && (!limitCents || limitCents <= 0)) {
-    cardsRedirect({ error: "Informe um limite válido ou deixe em branco." });
+    cardsRedirect({ error: "Informe um limite válido ou deixe em branco." }, formData);
   }
 
   const supabase = await createClient();
@@ -222,11 +223,11 @@ export async function createCreditCard(formData: FormData) {
   });
 
   if (error) {
-    cardsRedirect({ error: "Não foi possível criar o cartão." });
+    cardsRedirect({ error: "Não foi possível criar o cartão." }, formData);
   }
 
   revalidatePath("/cards");
-  cardsRedirect({ success: "Cartão criado." });
+  cardsRedirect({ success: "Cartão criado." }, formData);
 }
 
 export async function updateCreditCard(formData: FormData) {

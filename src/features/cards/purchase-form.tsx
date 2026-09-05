@@ -1,11 +1,14 @@
 import type { CreditCard } from "@/features/cards/data";
 import type { Category } from "@/features/categories/data";
 import { SubmitButton } from "@/components/submit-button";
+import { todayInSaoPaulo } from "@/lib/civil-date";
+import { cn } from "@/lib/utils";
 
 type CreditCardPurchaseFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   cards: CreditCard[];
   categories: Category[];
+  embedded?: boolean;
   returnState?: {
     invoiceSearch: string;
     invoiceStatus: string;
@@ -16,6 +19,7 @@ export function CreditCardPurchaseForm({
   action,
   cards,
   categories,
+  embedded = false,
   returnState,
 }: CreditCardPurchaseFormProps) {
   const hasCards = cards.length > 0;
@@ -23,13 +27,17 @@ export function CreditCardPurchaseForm({
   return (
     <form
       action={action}
-      className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
+      className={cn(
+        "min-w-0 bg-white",
+        !embedded &&
+          "rounded-[1.75rem] border border-slate-200 p-5 shadow-sm",
+      )}
     >
       <input name="cards_return_anchor" type="hidden" value="faturas" />
       <input
         name="cards_invoice_status"
         type="hidden"
-        value={returnState?.invoiceStatus ?? "all"}
+        value={returnState?.invoiceStatus ?? "open"}
       />
       <input
         name="cards_invoice_search"
@@ -37,13 +45,17 @@ export function CreditCardPurchaseForm({
         value={returnState?.invoiceSearch ?? ""}
       />
 
-      <h2 className="text-lg font-semibold">Nova compra no cartão</h2>
-      <p className="mt-1 text-sm leading-6 text-slate-500">
-        Registre uma compra e o FluxoPay gera as parcelas pela data de
-        fechamento e vencimento do cartão.
-      </p>
+      {!embedded ? (
+        <>
+          <h2 className="text-lg font-semibold">Nova compra no cartão</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Registre uma compra e o FluxoPay gera as parcelas pela data de
+            fechamento e vencimento do cartão.
+          </p>
+        </>
+      ) : null}
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
+      <div className={cn("grid gap-4 md:grid-cols-2", !embedded && "mt-5")}>
         <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Cartão
           <select
@@ -92,7 +104,7 @@ export function CreditCardPurchaseForm({
             name="purchase_date"
             required
             type="date"
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={todayInSaoPaulo()}
           />
         </label>
 

@@ -6,12 +6,21 @@ import {
 } from "@/features/transactions/constants";
 import type { Transaction } from "@/features/transactions/data";
 import { formatCurrencyFromCents } from "@/lib/formatters";
+import { todayInSaoPaulo } from "@/lib/civil-date";
+import { cn } from "@/lib/utils";
 
 type TransactionFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   categories: Category[];
   submitLabel: string;
   transaction?: Transaction;
+  embedded?: boolean;
+  returnState?: {
+    category?: string;
+    end?: string;
+    start?: string;
+    type?: string;
+  };
 };
 
 function toAmountInput(transaction?: Transaction) {
@@ -29,16 +38,49 @@ export function TransactionForm({
   categories,
   submitLabel,
   transaction,
+  embedded = false,
+  returnState,
 }: TransactionFormProps) {
   return (
     <form
       action={action}
-      className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
+      className={cn(
+        "min-w-0 bg-white",
+        !embedded &&
+          "rounded-[1.75rem] border border-slate-200 p-5 shadow-sm",
+      )}
     >
-      <h2 className="text-lg font-semibold">
-        {transaction ? "Editar transação" : "Nova transação"}
-      </h2>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
+      {returnState ? (
+        <>
+          <input name="return_anchor" type="hidden" value="historico" />
+          <input
+            name="return_start"
+            type="hidden"
+            value={returnState.start ?? ""}
+          />
+          <input
+            name="return_end"
+            type="hidden"
+            value={returnState.end ?? ""}
+          />
+          <input
+            name="return_type"
+            type="hidden"
+            value={returnState.type ?? ""}
+          />
+          <input
+            name="return_category"
+            type="hidden"
+            value={returnState.category ?? ""}
+          />
+        </>
+      ) : null}
+      {!embedded ? (
+        <h2 className="text-lg font-semibold">
+          {transaction ? "Editar transação" : "Nova transação"}
+        </h2>
+      ) : null}
+      <div className={cn("grid gap-4 md:grid-cols-2", !embedded && "mt-5")}>
         <label className="grid min-w-0 gap-2 text-sm font-medium text-slate-700">
           Tipo
           <select
@@ -116,7 +158,7 @@ export function TransactionForm({
             type="date"
             required
             defaultValue={
-              transaction?.transaction_date ?? new Date().toISOString().slice(0, 10)
+              transaction?.transaction_date ?? todayInSaoPaulo()
             }
           />
         </label>

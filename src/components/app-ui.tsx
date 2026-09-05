@@ -181,12 +181,14 @@ export function MetricCard({
 }
 
 type EmptyStateProps = {
+  action?: React.ReactNode;
   description: string;
   icon?: LucideIcon;
   title: string;
 };
 
 export function EmptyState({
+  action,
   description,
   icon: Icon,
   title,
@@ -201,6 +203,7 @@ export function EmptyState({
         ) : null}
         <p className="mt-3 font-semibold text-slate-800">{title}</p>
         <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+        {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
       </div>
     </div>
   );

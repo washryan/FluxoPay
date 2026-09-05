@@ -10,9 +10,22 @@ import { createClient } from "@/lib/supabase/server";
 function transactionRedirect(
   path: string,
   params: Record<string, string>,
+  formData?: FormData,
 ): never {
   const query = new URLSearchParams(params);
-  redirect(`${path}?${query.toString()}`);
+  const returnValues = {
+    category: String(formData?.get("return_category") ?? ""),
+    end: String(formData?.get("return_end") ?? ""),
+    start: String(formData?.get("return_start") ?? ""),
+    type: String(formData?.get("return_type") ?? ""),
+  };
+
+  for (const [key, value] of Object.entries(returnValues)) {
+    if (value && !(key === "type" && value === "all")) query.set(key, value);
+  }
+  const anchor = String(formData?.get("return_anchor") ?? "");
+  const hash = /^[a-z0-9-]+$/i.test(anchor) ? `#${anchor}` : "";
+  redirect(`${path}?${query.toString()}${hash}`);
 }
 
 function parseFormData(formData: FormData) {
@@ -55,7 +68,11 @@ export async function createTransaction(formData: FormData) {
   const parsed = parseFormData(formData);
 
   if (parsed.error || !parsed.data) {
-    transactionRedirect("/transactions", { error: parsed.error ?? "Dados invalidos." });
+    transactionRedirect(
+      "/transactions",
+      { error: parsed.error ?? "Dados invalidos." },
+      formData,
+    );
   }
 
   const supabase = await createClient();
@@ -79,14 +96,20 @@ export async function createTransaction(formData: FormData) {
   });
 
   if (error) {
-    transactionRedirect("/transactions", {
-      error: "Não foi possível criar a transação.",
-    });
+    transactionRedirect(
+      "/transactions",
+      { error: "Não foi possível criar a transação." },
+      formData,
+    );
   }
 
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
-  transactionRedirect("/transactions", { success: "Transacao criada." });
+  transactionRedirect(
+    "/transactions",
+    { success: "Transação criada." },
+    formData,
+  );
 }
 
 export async function updateTransaction(id: string, formData: FormData) {

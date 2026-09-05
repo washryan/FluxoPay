@@ -2,11 +2,29 @@ import { CreditCard } from "lucide-react";
 
 import { SubmitButton } from "@/components/submit-button";
 import { createCreditCard } from "@/features/cards/actions";
+import { cn } from "@/lib/utils";
 
-export function CustomCardForm() {
+type CustomCardFormProps = {
+  embedded?: boolean;
+  returnState?: {
+    invoiceSearch: string;
+    invoiceStatus: string;
+  };
+};
+
+export function CustomCardForm({
+  embedded = false,
+  returnState,
+}: CustomCardFormProps) {
   return (
-    <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-3">
+    <article
+      className={cn(
+        "bg-white",
+        !embedded &&
+          "rounded-[1.75rem] border border-slate-200 p-5 shadow-sm",
+      )}
+    >
+      {!embedded ? <div className="flex items-center gap-3">
         <span className="rounded-2xl bg-slate-950 p-2 text-white">
           <CreditCard className="size-5" />
         </span>
@@ -16,9 +34,23 @@ export function CustomCardForm() {
             Para bancos digitais, cooperativas ou cartões de loja.
           </p>
         </div>
-      </div>
+      </div> : null}
 
-      <form action={createCreditCard} className="mt-5 grid gap-4 md:grid-cols-2">
+      <form
+        action={createCreditCard}
+        className={cn("grid gap-4 md:grid-cols-2", !embedded && "mt-5")}
+      >
+        <input name="cards_return_anchor" type="hidden" value="faturas" />
+        <input
+          name="cards_invoice_status"
+          type="hidden"
+          value={returnState?.invoiceStatus ?? "open"}
+        />
+        <input
+          name="cards_invoice_search"
+          type="hidden"
+          value={returnState?.invoiceSearch ?? ""}
+        />
         <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
           Nome do cartão
           <input

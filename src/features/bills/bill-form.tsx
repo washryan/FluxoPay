@@ -1,23 +1,34 @@
 import type { Category } from "@/features/categories/data";
 import { billTypeLabels, recurrenceLabels } from "@/features/bills/constants";
 import { SubmitButton } from "@/components/submit-button";
+import { todayInSaoPaulo } from "@/lib/civil-date";
+import { cn } from "@/lib/utils";
 
 type BillFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   categories: Category[];
+  embedded?: boolean;
 };
 
-export function BillForm({ action, categories }: BillFormProps) {
+export function BillForm({ action, categories, embedded = false }: BillFormProps) {
   return (
     <form
       action={action}
-      className="h-fit rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"
+      className={cn(
+        "h-fit bg-white",
+        !embedded &&
+          "rounded-[1.75rem] border border-slate-200 p-5 shadow-sm",
+      )}
     >
-      <h2 className="text-lg font-semibold">Nova conta</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Registre uma conta a pagar ou uma conta a receber.
-      </p>
-      <div className="mt-5 grid gap-4">
+      {!embedded ? (
+        <>
+          <h2 className="text-lg font-semibold">Nova conta</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Registre uma conta a pagar ou uma conta a receber.
+          </p>
+        </>
+      ) : null}
+      <div className={cn("grid gap-4", !embedded && "mt-5")}>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Nome
           <input
@@ -46,7 +57,7 @@ export function BillForm({ action, categories }: BillFormProps) {
             name="due_date"
             type="date"
             required
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={todayInSaoPaulo()}
           />
         </label>
 

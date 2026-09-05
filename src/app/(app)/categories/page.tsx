@@ -9,6 +9,7 @@ import {
   Surface,
 } from "@/components/app-ui";
 import { DeleteButton } from "@/components/delete-button";
+import { CreateDialog } from "@/components/create-dialog";
 import { SubmitButton } from "@/components/submit-button";
 import {
   createCategory,
@@ -47,19 +48,101 @@ export default async function CategoriesPage({
     (category) => category.type === "expense" || category.type === "both",
   ).length;
   const pageError = error ?? result.error ?? null;
+  const primaryCategories = result.categories.slice(0, 6);
+  const additionalCategories = result.categories.slice(6);
+
+  function renderCategory(category: (typeof result.categories)[number]) {
+    return (
+      <div className="p-4" key={category.id}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className="size-4 shrink-0 rounded-full border border-white shadow"
+              style={{ backgroundColor: category.color }}
+            />
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-slate-900">
+                {category.name}
+              </p>
+              <p className="text-xs text-slate-500">
+                {typeLabels[category.type]} ·{" "}
+                {category.is_default ? "Padrão" : "Personalizada"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <CategoryEditForm action={updateCategory} category={category} />
+            {!category.is_default ? (
+              <form action={deleteCategory}>
+                <input
+                  name="id"
+                  type="hidden"
+                  value={category.id}
+                  suppressHydrationWarning
+                />
+                <DeleteButton message="Excluir esta categoria? Transações antigas ficarão sem categoria.">
+                  Excluir
+                </DeleteButton>
+              </form>
+            ) : (
+              <SoftBadge className="border-slate-200 bg-slate-100 text-slate-600">
+                Protegida
+              </SoftBadge>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <PageFrame>
       <PageHero
         actions={
-          <a
-            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-lg shadow-black/10 transition hover:bg-emerald-100"
-            href="#nova-categoria"
+          <CreateDialog
+            description="Defina nome, uso e cor para identificar seus lançamentos."
+            label="Nova categoria"
+            key={`category-${success ?? error ?? "idle"}`}
+            title="Nova categoria"
+            triggerClassName="bg-white font-black text-slate-950 shadow-lg shadow-black/10 hover:bg-emerald-100"
           >
-            Criar categoria
-          </a>
+            <form action={createCategory} className="grid gap-4">
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Nome
+                <input
+                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  name="name"
+                  placeholder="Ex: Pet, Escola, Investimentos"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Uso
+                <select
+                  className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  name="type"
+                  defaultValue="expense"
+                >
+                  <option value="expense">Contas e transações de saída</option>
+                  <option value="income">Contas e transações de entrada</option>
+                  <option value="both">Entradas e saídas</option>
+                </select>
+              </label>
+              <div className="grid gap-2 text-sm font-medium text-slate-700">
+                Cor
+                <CategoryColorPicker />
+              </div>
+              <SubmitButton
+                className="h-11 bg-slate-950 text-white hover:bg-slate-800"
+                pendingLabel="Criando..."
+              >
+                Criar categoria
+              </SubmitButton>
+            </form>
+          </CreateDialog>
         }
-        description="Defina nomes e cores que aparecem nas transações, filtros, dashboard, relatórios e parser do Telegram."
+        description="Defina nomes e cores para organizar transações, contas, filtros e relatórios."
         eyebrow="Organização"
         title="Categorias que deixam seus gastos legíveis."
         variant="dark"
@@ -69,7 +152,7 @@ export default async function CategoriesPage({
             {result.categories.length} categorias
           </SoftBadge>
           <SoftBadge className="border-white/15 bg-white/10 text-emerald-50">
-            Padrões protegidas
+            Categorias padrão protegidas
           </SoftBadge>
         </div>
       </PageHero>
@@ -110,48 +193,7 @@ export default async function CategoriesPage({
         />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <Surface
-          className="h-fit"
-          id="nova-categoria"
-          title="Nova categoria"
-          description="Use uma cor pronta ou abra a paleta para escolher manualmente."
-        >
-          <form action={createCategory} className="grid gap-4">
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
-              Nome
-              <input
-                className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                name="name"
-                placeholder="Ex: Pet, Escola, Investimentos"
-                required
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
-              Tipo
-              <select
-                className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                name="type"
-                defaultValue="expense"
-              >
-                <option value="expense">Saída</option>
-                <option value="income">Entrada</option>
-                <option value="both">Ambos</option>
-              </select>
-            </label>
-            <div className="grid gap-2 text-sm font-medium text-slate-700">
-              Cor
-              <CategoryColorPicker />
-            </div>
-            <SubmitButton
-              className="h-11 bg-slate-950 text-white hover:bg-slate-800"
-              pendingLabel="Criando..."
-            >
-              Criar categoria
-            </SubmitButton>
-          </form>
-        </Surface>
-
+      <section>
         <Surface
           action={
             <span className="rounded-2xl bg-slate-950 p-2 text-white">
@@ -165,51 +207,22 @@ export default async function CategoriesPage({
           <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
             {result.categories.length > 0 ? (
               <div className="divide-y divide-slate-100">
-                {result.categories.map((category) => (
-                  <div className="p-4" key={category.id}>
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span
-                          className="size-4 shrink-0 rounded-full border border-white shadow"
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-slate-900">
-                            {category.name}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {typeLabels[category.type]} ·{" "}
-                            {category.is_default ? "Padrão" : "Customizada"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CategoryEditForm
-                          action={updateCategory}
-                          category={category}
-                        />
-                        {!category.is_default ? (
-                          <form action={deleteCategory}>
-                            <input
-                              name="id"
-                              type="hidden"
-                              value={category.id}
-                              suppressHydrationWarning
-                            />
-                            <DeleteButton message="Excluir esta categoria? Transações antigas ficarão sem categoria.">
-                              Excluir
-                            </DeleteButton>
-                          </form>
-                        ) : (
-                          <SoftBadge className="border-slate-200 bg-slate-100 text-slate-600">
-                            Protegida
-                          </SoftBadge>
-                        )}
-                      </div>
+                {primaryCategories.map(renderCategory)}
+                {additionalCategories.length > 0 ? (
+                  <details className="group">
+                    <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                      <span className="group-open:hidden">
+                        Mostrar outras {additionalCategories.length} categorias
+                      </span>
+                      <span className="hidden group-open:inline">
+                        Ocultar categorias adicionais
+                      </span>
+                    </summary>
+                    <div className="divide-y divide-slate-100 border-t border-slate-100">
+                      {additionalCategories.map(renderCategory)}
                     </div>
-                  </div>
-                ))}
+                  </details>
+                ) : null}
               </div>
             ) : (
               <EmptyState

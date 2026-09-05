@@ -85,9 +85,9 @@ export default async function AppLayout({
                 <FolderKanban className="size-4" />
               </span>
               <div>
-                <p className="font-semibold">Workspace privado</p>
+                <p className="font-semibold">Seu espaço financeiro</p>
                 <p className="text-xs text-emerald-100/65">
-                  Supabase + bot local
+                  Organização e lembretes em um só lugar
                 </p>
               </div>
             </div>

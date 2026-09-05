@@ -11,9 +11,16 @@ type CardPreset = (typeof cardPresets)[number];
 
 type PresetCardPickerProps = {
   action: (formData: FormData) => void | Promise<void>;
+  returnState?: {
+    invoiceSearch: string;
+    invoiceStatus: string;
+  };
 };
 
-export function PresetCardPicker({ action }: PresetCardPickerProps) {
+export function PresetCardPicker({
+  action,
+  returnState,
+}: PresetCardPickerProps) {
   const [selectedPreset, setSelectedPreset] = useState<CardPreset | null>(null);
 
   useEffect(() => {
@@ -70,6 +77,21 @@ export function PresetCardPicker({ action }: PresetCardPickerProps) {
 
           <form action={action} className="mt-5 grid gap-4">
             <input name="name" type="hidden" value={selectedPreset.name} />
+            <input
+              name="cards_return_anchor"
+              type="hidden"
+              value="faturas"
+            />
+            <input
+              name="cards_invoice_status"
+              type="hidden"
+              value={returnState?.invoiceStatus ?? "open"}
+            />
+            <input
+              name="cards_invoice_search"
+              type="hidden"
+              value={returnState?.invoiceSearch ?? ""}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-slate-700">

@@ -2,7 +2,6 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarDays,
-  Filter,
   ListChecks,
   SearchX,
   Wallet,
@@ -18,6 +17,8 @@ import {
   Surface,
 } from "@/components/app-ui";
 import { DeleteButton } from "@/components/delete-button";
+import { CreateDialog } from "@/components/create-dialog";
+import { QueryFilterForm } from "@/components/query-filter-form";
 import { getCategories } from "@/features/categories/data";
 import {
   createTransaction,
@@ -69,12 +70,21 @@ export default async function TransactionsPage({
     <PageFrame>
       <PageHero
         actions={
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-lg shadow-black/10 transition hover:bg-emerald-100"
-            href="#nova-transacao"
+          <CreateDialog
+            description="Informe os dados da movimentação realizada."
+            label="Nova transação"
+            key={`transaction-${params.success ?? params.error ?? "idle"}`}
+            title="Nova transação"
+            triggerClassName="bg-white font-black text-slate-950 shadow-lg shadow-black/10 hover:bg-emerald-100"
           >
-            Lançar agora
-          </Link>
+            <TransactionForm
+              action={createTransaction}
+              categories={categoriesResult.categories}
+              embedded
+              returnState={params}
+              submitLabel="Criar transação"
+            />
+          </CreateDialog>
         }
         description="Registre entradas e saídas, filtre por período e mantenha o dashboard batendo com a vida real."
         eyebrow="Movimentações"
@@ -127,15 +137,7 @@ export default async function TransactionsPage({
         />
       </section>
 
-      <section className="grid min-w-0 gap-5 2xl:grid-cols-[430px_minmax(0,1fr)]">
-        <div id="nova-transacao">
-          <TransactionForm
-            action={createTransaction}
-            categories={categoriesResult.categories}
-            submitLabel="Criar transação"
-          />
-        </div>
-
+      <section className="min-w-0">
         <Surface
           action={
             <span className="rounded-2xl bg-slate-950 p-2 text-white">
@@ -143,12 +145,17 @@ export default async function TransactionsPage({
             </span>
           }
           className="min-w-0"
-          description="Mostrando até 100 transações mais recentes conforme o filtro aplicado."
+          description={
+            params.start || params.end
+              ? "Mostrando todas as transações do período selecionado."
+              : "Mostrando até 50 transações realizadas nos últimos 30 dias."
+          }
           title="Histórico"
+          id="historico"
         >
-          <form
-            action="/transactions"
+          <QueryFilterForm
             className="mb-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/90 p-3 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
+            key={[params.start, params.end, params.type, params.category].join(":")}
           >
             <label className="grid gap-1 text-xs font-semibold text-slate-500">
               Início
@@ -199,11 +206,7 @@ export default async function TransactionsPage({
                 ))}
               </select>
             </label>
-            <button className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 sm:col-span-2 xl:col-span-1 xl:self-end">
-              <Filter className="size-4" />
-              Filtrar
-            </button>
-          </form>
+          </QueryFilterForm>
 
           <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
             {transactionsResult.transactions.length > 0 ? (
@@ -270,7 +273,26 @@ export default async function TransactionsPage({
               </div>
             ) : (
               <EmptyState
-                description="Troque os filtros ou lance uma nova movimentação para ela aparecer aqui."
+                action={
+                  <CreateDialog
+                    description="Informe os dados da movimentação realizada."
+                    label="Nova transação"
+                    title="Nova transação"
+                  >
+                    <TransactionForm
+                      action={createTransaction}
+                      categories={categoriesResult.categories}
+                      embedded
+                      returnState={params}
+                      submitLabel="Criar transação"
+                    />
+                  </CreateDialog>
+                }
+                description={
+                  params.start || params.end || params.type || params.category
+                    ? "Ajuste os filtros ou registre uma nova movimentação."
+                    : "Registre uma nova movimentação para começar seu histórico."
+                }
                 icon={SearchX}
                 title="Nenhuma transação encontrada"
               />

@@ -2,13 +2,10 @@ import {
   BadgeCheck,
   CalendarCheck2,
   CreditCard,
-  Search,
   Sparkles,
   Trash2,
   WalletCards,
 } from "lucide-react";
-import Link from "next/link";
-
 import {
   EmptyState,
   PageFrame,
@@ -17,6 +14,7 @@ import {
   Surface,
 } from "@/components/app-ui";
 import { ConfirmButton } from "@/components/confirm-button";
+import { CreateDialog } from "@/components/create-dialog";
 import { SubmitButton } from "@/components/submit-button";
 import {
   adjustCreditCardPurchaseInstallments,
@@ -31,6 +29,7 @@ import {
   updateCreditCard,
 } from "@/features/cards/actions";
 import { CustomCardForm } from "@/features/cards/card-form";
+import { CardVisibilityList } from "@/features/cards/card-visibility-list";
 import {
   getCreditCardInvoices,
   getCreditCards,
@@ -40,6 +39,8 @@ import { PresetCardPicker } from "@/features/cards/preset-card-picker";
 import { getCardPreset } from "@/features/cards/presets";
 import { CreditCardPurchaseForm } from "@/features/cards/purchase-form";
 import { InvoicePaymentDialog } from "@/features/cards/invoice-payment-dialog";
+import { InvoiceFilters } from "@/features/cards/invoice-filters";
+import { resolveInvoiceStatus } from "@/features/cards/invoice-query";
 import { billStatusLabels, billStatusStyles } from "@/features/bills/constants";
 import { getCategories } from "@/features/categories/data";
 import { syncOverdueStatuses } from "@/features/overdue/sync";
@@ -61,27 +62,6 @@ function formatInvoiceMonth(value: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
-}
-
-function filterHref({
-  invoiceStatus,
-  q,
-}: {
-  invoiceStatus?: string;
-  q?: string;
-}) {
-  const query = new URLSearchParams();
-
-  if (invoiceStatus && invoiceStatus !== "all") {
-    query.set("invoiceStatus", invoiceStatus);
-  }
-
-  if (q) {
-    query.set("q", q);
-  }
-
-  const value = query.toString();
-  return value ? `/cards?${value}` : "/cards";
 }
 
 function CardsReturnState({
@@ -116,12 +96,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
     getUpcomingInstallments(),
     getCreditCardInvoices(),
   ]);
-  const activeInvoiceStatus =
-    params.invoiceStatus === "paid" ||
-    params.invoiceStatus === "open" ||
-    params.invoiceStatus === "overdue"
-      ? params.invoiceStatus
-      : "all";
+  const activeInvoiceStatus = resolveInvoiceStatus(params.invoiceStatus);
   const invoiceSearch = (params.q ?? "").trim();
   const normalizedInvoiceSearch = invoiceSearch
     .normalize("NFD")
@@ -189,12 +164,12 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
     <PageFrame>
       <PageHero
         actions={
-          <Link
+          <a
             className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-lg shadow-black/10 transition hover:bg-emerald-100"
             href="#faturas"
           >
             Ver faturas
-          </Link>
+          </a>
         }
         description="Controle limite disponível, compras parceladas, faturas abertas, pagamentos parciais e parcelamentos sem perder o rastro."
         eyebrow="Cartões de crédito"
@@ -258,7 +233,10 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
         title="Modelos rápidos"
         description="Comece por um banco conhecido e ajuste fechamento, vencimento e limite antes de salvar."
       >
-        <PresetCardPicker action={createCreditCard} />
+        <PresetCardPicker
+          action={createCreditCard}
+          returnState={cardsReturnState}
+        />
       </Surface>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_390px]">
@@ -271,12 +249,15 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
             </span>
           }
         >
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-5">
             {cardsResult.cards.length > 0 ? (
-              cardsResult.cards.map((card) => {
+              <CardVisibilityList items={cardsResult.cards.map((card) => {
                 const preset = getCardPreset(card.name);
 
-                return (
+                return {
+                  id: card.id,
+                  name: card.name,
+                  content: (
                   <div
                     className={`rounded-[1.5rem] border border-slate-200 p-4 ${
                       preset
@@ -413,10 +394,11 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                       </ConfirmButton>
                     </form>
                   </div>
-                );
-              })
+                  ),
+                };
+              })} />
             ) : (
-              <div className="md:col-span-2">
+              <div>
                 <EmptyState
                   description="Cadastre um cartão padrão ou personalizado para começar a gerar faturas."
                   icon={CreditCard}
@@ -428,7 +410,14 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
         </Surface>
 
         <div className="space-y-5">
-          <CustomCardForm />
+          <CreateDialog
+            description="Cadastre um cartão que não aparece nos modelos rápidos."
+            label="Novo cartão"
+            key={`card-${params.success ?? params.error ?? "idle"}`}
+            title="Novo cartão"
+          >
+            <CustomCardForm embedded returnState={cardsReturnState} />
+          </CreateDialog>
           <Surface>
             <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
               <BadgeCheck className="size-5" />
@@ -452,14 +441,23 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[430px_1fr]">
-        <CreditCardPurchaseForm
-          action={createCreditCardPurchase}
-          cards={cardsResult.cards}
-          categories={categoriesResult.categories}
-          returnState={cardsReturnState}
-        />
-
+      <section className="space-y-5">
+        <div className="flex justify-end">
+          <CreateDialog
+            description="Informe a compra e o parcelamento desejado."
+            label="Nova compra"
+            key={`purchase-${params.success ?? params.error ?? "idle"}`}
+            title="Nova compra no cartão"
+          >
+            <CreditCardPurchaseForm
+              action={createCreditCardPurchase}
+              cards={cardsResult.cards}
+              categories={categoriesResult.categories}
+              embedded
+              returnState={cardsReturnState}
+            />
+          </CreateDialog>
+        </div>
         <Surface
           title="Próximas parcelas"
           description="Parcelas pendentes ordenadas pelo vencimento."
@@ -532,53 +530,11 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
         id="faturas"
         title="Faturas consolidadas"
       >
-        <div className="mt-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/90 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: "Todas", value: "all" },
-              { label: "Em aberto", value: "open" },
-              { label: "Pagas", value: "paid" },
-              { label: "Atrasadas", value: "overdue" },
-            ].map((option) => (
-              <Link
-                className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
-                  activeInvoiceStatus === option.value
-                    ? "bg-slate-950 text-white"
-                    : "bg-white text-slate-600 hover:bg-slate-100"
-                }`}
-                href={filterHref({
-                  invoiceStatus: option.value,
-                  q: invoiceSearch,
-                })}
-                key={option.value}
-              >
-                {option.label}
-              </Link>
-            ))}
-          </div>
-
-          <form action="/cards" className="flex flex-col gap-2 sm:flex-row">
-            {activeInvoiceStatus !== "all" ? (
-              <input
-                name="invoiceStatus"
-                type="hidden"
-                value={activeInvoiceStatus}
-              />
-            ) : null}
-            <label className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                className="h-10 min-w-0 rounded-full border border-slate-200 bg-white pl-9 pr-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 sm:w-80"
-                name="q"
-                placeholder="Buscar por cartão, compra ou categoria"
-                defaultValue={invoiceSearch}
-              />
-            </label>
-            <button className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
-              Buscar
-            </button>
-          </form>
-        </div>
+        <InvoiceFilters
+          invoiceSearch={invoiceSearch}
+          invoiceStatus={activeInvoiceStatus}
+          key={`${activeInvoiceStatus}:${invoiceSearch}`}
+        />
 
         <div className="mt-5 grid gap-4">
           {filteredInvoices.length > 0 ? (

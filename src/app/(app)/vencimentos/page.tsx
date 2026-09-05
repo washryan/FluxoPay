@@ -232,8 +232,8 @@ export default async function VencimentosPage() {
             <CalendarClock className="size-5" />
           </span>
         }
-        description="A view `financial_obligations` no Supabase une contas e parcelas de cartão. O worker local pode usar essa mesma base para enviar alertas sem duplicar regra."
-        title="Fonte única para lembretes"
+        description="Contas e parcelas ficam reunidas para você acompanhar o que vence primeiro e agir com antecedência."
+        title="Agenda de vencimentos"
       >
         <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-3">
           <div className="rounded-2xl bg-slate-50 p-4">

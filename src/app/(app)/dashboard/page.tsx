@@ -152,7 +152,7 @@ export default async function DashboardPage({
         <div className="flex gap-3 rounded-[1.5rem] border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-900 shadow-sm">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
           <div>
-            <p className="font-semibold">Banco ainda não sincronizado</p>
+            <p className="font-semibold">Não foi possível carregar seus dados</p>
             <p className="mt-1 leading-6">{dashboard.error}</p>
           </div>
         </div>
@@ -219,7 +219,7 @@ export default async function DashboardPage({
 
       <Surface
         title="Saldo inicial"
-        description="Informe quanto já existia em caixa antes da primeira movimentação. Este valor não cria uma transação artificial."
+        description="Informe quanto já existia em caixa antes da primeira movimentação."
       >
         <form action={updateOpeningBalance} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="grid flex-1 gap-2 text-sm font-medium text-slate-700">

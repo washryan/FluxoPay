@@ -1,11 +1,11 @@
+import {
+  resolveTransactionQuery,
+  type TransactionFilters,
+} from "@/features/transactions/query";
+import { todayInSaoPaulo } from "@/lib/civil-date";
 import { createClient } from "@/lib/supabase/server";
 
-export type TransactionFilters = {
-  start?: string;
-  end?: string;
-  type?: "income" | "expense" | "all";
-  category?: string;
-};
+export type { TransactionFilters } from "@/features/transactions/query";
 
 export type Transaction = {
   id: string;
@@ -56,12 +56,17 @@ function normalizeTransaction(row: TransactionQueryRow): Transaction {
 
 export async function getTransactions(filters: TransactionFilters) {
   const supabase = await createClient();
+  const today = todayInSaoPaulo();
+  const queryPlan = resolveTransactionQuery(filters, today);
   const pageSize = 1000;
   const rows: TransactionQueryRow[] = [];
+  const pageCount = queryPlan.limit ? 1 : 10;
 
-  for (let page = 0; page < 10; page += 1) {
+  for (let page = 0; page < pageCount; page += 1) {
     const from = page * pageSize;
-    const to = from + pageSize - 1;
+    const to = queryPlan.limit
+      ? queryPlan.limit - 1
+      : from + pageSize - 1;
     let query = supabase
       .from("transactions")
       .select(
@@ -71,12 +76,12 @@ export async function getTransactions(filters: TransactionFilters) {
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    if (filters.start) {
-      query = query.gte("transaction_date", filters.start);
+    if (queryPlan.start) {
+      query = query.gte("transaction_date", queryPlan.start);
     }
 
-    if (filters.end) {
-      query = query.lte("transaction_date", filters.end);
+    if (queryPlan.end) {
+      query = query.lte("transaction_date", queryPlan.end);
     }
 
     if (filters.type && filters.type !== "all") {
@@ -96,7 +101,7 @@ export async function getTransactions(filters: TransactionFilters) {
     const pageRows = (data ?? []) as unknown as TransactionQueryRow[];
     rows.push(...pageRows);
 
-    if (pageRows.length < pageSize) {
+    if (queryPlan.limit || pageRows.length < pageSize) {
       break;
     }
   }

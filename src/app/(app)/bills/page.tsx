@@ -16,6 +16,7 @@ import {
   Surface,
 } from "@/components/app-ui";
 import { ConfirmButton } from "@/components/confirm-button";
+import { CreateDialog } from "@/components/create-dialog";
 import { DeleteButton } from "@/components/delete-button";
 import { BillForm } from "@/features/bills/bill-form";
 import {
@@ -64,12 +65,19 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
     <PageFrame>
       <PageHero
         actions={
-          <a
-            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-lg shadow-black/10 transition hover:bg-emerald-100"
-            href="#nova-conta"
+          <CreateDialog
+            description="Escolha claramente se é uma conta a pagar ou a receber."
+            label="Nova conta"
+            key={`bill-${params.success ?? params.error ?? "idle"}`}
+            title="Nova conta"
+            triggerClassName="bg-white font-black text-slate-950 shadow-lg shadow-black/10 hover:bg-emerald-100"
           >
-            Criar conta
-          </a>
+            <BillForm
+              action={createBill}
+              categories={categoriesResult.categories}
+              embedded
+            />
+          </CreateDialog>
         }
         description="Cadastre contas a pagar ou receber, acompanhe recorrências e deixe os lembretes do bot prontos para agir."
         eyebrow="Contas futuras"
@@ -122,14 +130,7 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
         />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)]">
-        <div id="nova-conta">
-          <BillForm
-            action={createBill}
-            categories={categoriesResult.categories}
-          />
-        </div>
-
+      <section>
         <Surface
           action={
             <span className="rounded-2xl bg-slate-950 p-2 text-white">
@@ -240,7 +241,7 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
               </div>
             ) : (
               <EmptyState
-                description="Crie contas futuras para o dashboard projetado e o bot de lembretes ficarem úteis."
+                description="Crie uma conta a pagar ou a receber para acompanhar seus próximos vencimentos."
                 icon={SearchX}
                 title="Nenhuma conta cadastrada"
               />
