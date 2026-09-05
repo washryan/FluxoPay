@@ -20,6 +20,7 @@ type BillRow = {
   amount_cents: number;
   due_date: string;
   status: "pending" | "paid" | "overdue" | "cancelled";
+  type: "income" | "expense" | null;
 };
 
 type CardInstallmentRow = {
@@ -47,12 +48,8 @@ export type DashboardData = {
     balanceCents: number;
     transactionsCount: number;
   };
-  lifetime: {
-    incomeCents: number;
-    expenseCents: number;
-    balanceCents: number;
-  };
   financialPosition: {
+    openingBalanceCents: number;
     realizedBalanceCents: number;
     projectedBalanceCents: number;
     openCardsCents: number;
@@ -184,6 +181,31 @@ export async function getDashboardData({
   const currentMonthEnd = endOfMonth(today);
   const expenseRange = normalizeExpenseRange(rawExpenseRange);
   const trendRange = normalizeTrendRange(rawTrendRange);
+  const trendStart =
+    trendRange === "total"
+      ? null
+      : new Date(today.getFullYear(), today.getMonth() - (trendRange === "1y" ? 11 : 5), 1);
+  const expenseStart =
+    expenseRange === "total"
+      ? null
+      : expenseRange === "year"
+        ? startOfYear(today)
+        : currentMonthStart;
+  const historyStart =
+    trendStart && expenseStart
+      ? new Date(Math.min(trendStart.getTime(), expenseStart.getTime()))
+      : null;
+  let transactionsQuery = supabase
+    .from("transactions")
+    .select("type, amount_cents, transaction_date, category_id")
+    .lte("transaction_date", todayInput);
+
+  if (historyStart) {
+    transactionsQuery = transactionsQuery.gte(
+      "transaction_date",
+      toDateInput(historyStart),
+    );
+  }
 
   const [
     transactionsResult,
@@ -191,27 +213,28 @@ export async function getDashboardData({
     pendingBillsResult,
     cardInstallmentsResult,
     categoriesResult,
+    currentBalanceResult,
+    profileResult,
   ] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("type, amount_cents, transaction_date, category_id")
-      .lte("transaction_date", todayInput),
+    transactionsQuery,
     supabase
       .from("bills")
-      .select("id, name, amount_cents, due_date, status")
+      .select("id, name, amount_cents, due_date, status, type")
       .in("status", ["pending", "overdue"])
       .lte("due_date", toDateInput(addDays(today, 7)))
       .order("due_date", { ascending: true })
       .limit(5),
     supabase
       .from("bills")
-      .select("amount_cents")
+      .select("amount_cents, type")
       .in("status", ["pending", "overdue"]),
     supabase
       .from("installments")
       .select("amount_cents")
       .in("status", ["pending", "overdue"]),
     supabase.from("categories").select("id, name, color"),
+    supabase.rpc("get_current_balance"),
+    supabase.from("profiles").select("opening_balance_cents").single(),
   ]);
 
   const firstError =
@@ -219,7 +242,9 @@ export async function getDashboardData({
     upcomingBillsResult.error ??
     pendingBillsResult.error ??
     cardInstallmentsResult.error ??
-    categoriesResult.error;
+    categoriesResult.error ??
+    currentBalanceResult.error ??
+    profileResult.error;
   const fallbackTrendMonths = getTrendMonths({
     referenceDate: today,
     range: trendRange,
@@ -234,12 +259,8 @@ export async function getDashboardData({
         balanceCents: 0,
         transactionsCount: 0,
       },
-      lifetime: {
-        incomeCents: 0,
-        expenseCents: 0,
-        balanceCents: 0,
-      },
       financialPosition: {
+        openingBalanceCents: 0,
         realizedBalanceCents: 0,
         projectedBalanceCents: 0,
         openCardsCents: 0,
@@ -263,7 +284,7 @@ export async function getDashboardData({
   const bills = (upcomingBillsResult.data ?? []) as BillRow[];
   const pendingBills = (pendingBillsResult.data ?? []) as Pick<
     BillRow,
-    "amount_cents"
+    "amount_cents" | "type"
   >[];
   const cardInstallments =
     (cardInstallmentsResult.data ?? []) as CardInstallmentRow[];
@@ -285,16 +306,24 @@ export async function getDashboardData({
     .filter((transaction) => transaction.type === "expense")
     .reduce((total, transaction) => total + transaction.amount_cents, 0);
 
-  const lifetimeIncomeCents = transactions
-    .filter((transaction) => transaction.type === "income")
-    .reduce((total, transaction) => total + transaction.amount_cents, 0);
-
-  const lifetimeExpenseCents = transactions
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((total, transaction) => total + transaction.amount_cents, 0);
-  const realizedBalanceCents = lifetimeIncomeCents - lifetimeExpenseCents;
+  const openingBalanceCents = Number(
+    profileResult.data?.opening_balance_cents ?? 0,
+  );
+  const realizedBalanceCents = Number(
+    currentBalanceResult.data ?? openingBalanceCents,
+  );
   const pendingBillsCents = pendingBills.reduce(
     (total, bill) => total + bill.amount_cents,
+    0,
+  );
+  const pendingBillsImpactCents = pendingBills.reduce(
+    (total, bill) =>
+      total +
+      (bill.type === "income"
+        ? bill.amount_cents
+        : bill.type === "expense"
+          ? -bill.amount_cents
+          : 0),
     0,
   );
   const openCardsCents = cardInstallments.reduce(
@@ -377,15 +406,11 @@ export async function getDashboardData({
       balanceCents: incomeCents - expenseCents,
       transactionsCount: currentMonthTransactions.length,
     },
-    lifetime: {
-      incomeCents: lifetimeIncomeCents,
-      expenseCents: lifetimeExpenseCents,
-      balanceCents: realizedBalanceCents,
-    },
     financialPosition: {
+      openingBalanceCents,
       realizedBalanceCents,
       projectedBalanceCents:
-        realizedBalanceCents - pendingBillsCents - openCardsCents,
+        realizedBalanceCents + pendingBillsImpactCents - openCardsCents,
       openCardsCents,
       pendingBillsCents,
     },

@@ -789,6 +789,7 @@ export async function markInvoiceAsPaid(formData: FormData) {
     payment_date: formData.get("payment_date"),
     payment_method: formData.get("payment_method"),
     paid_amount: formData.get("paid_amount"),
+    payment_mode: formData.get("payment_mode"),
     payment_credit_card_id: formData.get("payment_credit_card_id"),
     credit_is_installment: formData.get("credit_is_installment"),
     credit_installments_count: formData.get("credit_installments_count"),
@@ -873,17 +874,6 @@ export async function markInvoiceAsPaid(formData: FormData) {
   );
   const purchase = firstRelation(installments[0]?.credit_card_purchases ?? null);
   const card = firstRelation(purchase?.credit_cards ?? null);
-  let invoiceCategoryId: string;
-
-  try {
-    invoiceCategoryId = await ensureInvoiceCategory(supabase, user.id);
-  } catch {
-    cardsRedirect(
-      { error: "Não foi possível preparar a categoria Fatura." },
-      formData,
-    );
-  }
-
   const isCreditPayment = parsed.data.payment_method === "credit_card";
   const isInvoiceInstallmentPayment =
     parsed.data.invoice_is_installment === "yes";
@@ -900,6 +890,73 @@ export async function markInvoiceAsPaid(formData: FormData) {
 
   if (paidCents <= 0) {
     cardsRedirect({ error: "Informe um valor pago maior que zero." }, formData);
+  }
+
+  const hasDivergence = !isInvoiceInstallmentPayment && paidCents !== openCents;
+
+  if (
+    hasDivergence &&
+    parsed.data.payment_mode !== "partial" &&
+    parsed.data.payment_mode !== "reconciliation"
+  ) {
+    cardsRedirect(
+      { error: "Escolha pagamento parcial ou confirme o valor real da fatura." },
+      formData,
+    );
+  }
+
+  if (parsed.data.payment_mode === "partial" && paidCents >= openCents) {
+    cardsRedirect(
+      { error: "Pagamento parcial deve ser menor que o total calculado." },
+      formData,
+    );
+  }
+
+  if (hasDivergence && parsed.data.payment_mode === "reconciliation") {
+    if (isCreditPayment || isInvoiceInstallmentPayment) {
+      cardsRedirect(
+        { error: "Reconciliação aceita Pix, débito ou boleto sem parcelamento." },
+        formData,
+      );
+    }
+
+    const { error: reconciliationError } = await supabase.rpc(
+      "reconcile_credit_card_invoice",
+      {
+        p_actual_paid_amount_cents: paidCents,
+        p_credit_card_id: cardId,
+        p_invoice_month: `${month}-01`,
+        p_payment_date: paymentDate,
+        p_payment_method: parsed.data.payment_method,
+      },
+    );
+
+    if (reconciliationError) {
+      cardsRedirect(
+        { error: "Não foi possível reconciliar a fatura." },
+        formData,
+      );
+    }
+
+    revalidatePath("/cards");
+    revalidatePath("/transactions");
+    revalidatePath("/dashboard");
+    revalidatePath("/resumo");
+    cardsRedirect(
+      { success: "Fatura quitada pelo valor real informado e ajuste registrado." },
+      formData,
+    );
+  }
+
+  let invoiceCategoryId: string;
+
+  try {
+    invoiceCategoryId = await ensureInvoiceCategory(supabase, user.id);
+  } catch {
+    cardsRedirect(
+      { error: "Não foi possível preparar a categoria Fatura." },
+      formData,
+    );
   }
 
   const remainingCents = openCents - paidCents;

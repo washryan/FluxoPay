@@ -65,6 +65,7 @@ export const invoicePaymentSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data do pagamento."),
     payment_method: z.enum(["pix", "debit_card", "boleto", "credit_card"]),
     paid_amount: optionalFormStringSchema,
+    payment_mode: z.enum(["full", "partial", "reconciliation"]).optional(),
     payment_credit_card_id: optionalFormStringSchema,
     credit_is_installment: optionalInstallmentModeSchema,
     credit_installments_count: optionalInstallmentsCountSchema,

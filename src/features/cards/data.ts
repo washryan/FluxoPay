@@ -290,6 +290,12 @@ export type CreditCardInvoice = {
   open_cents: number;
   paid_cents: number;
   interest_cents: number;
+  reconciliation: {
+    calculated_amount_cents: number;
+    actual_paid_amount_cents: number;
+    difference_cents: number;
+    mode: "reconciliation";
+  } | null;
   payment_transaction_id: string | null;
   status: "pending" | "paid" | "overdue" | "cancelled";
   items: CreditCardInvoiceItem[];
@@ -359,6 +365,14 @@ type SourceInvoiceDetailRow = {
 type PaymentTransactionRow = {
   id: string;
   amount_cents: number;
+};
+
+type ReconciliationRow = {
+  transaction_id: string;
+  calculated_amount_cents: number;
+  actual_paid_amount_cents: number;
+  difference_cents: number;
+  mode: "reconciliation";
 };
 
 function invoiceStatus(
@@ -457,6 +471,7 @@ export async function getCreditCardInvoices() {
     ),
   ) as string[];
   const paymentAmountById = new Map<string, number>();
+  const reconciliationByTransactionId = new Map<string, ReconciliationRow>();
   const sourceTransactionIds = Array.from(
     new Set(
       rows
@@ -488,6 +503,29 @@ export async function getCreditCardInvoices() {
 
     for (const transaction of (paymentData ?? []) as PaymentTransactionRow[]) {
       paymentAmountById.set(transaction.id, transaction.amount_cents);
+    }
+
+    const { data: reconciliationData, error: reconciliationError } =
+      await supabase
+        .from("invoice_payment_reconciliations")
+        .select(
+          "transaction_id, calculated_amount_cents, actual_paid_amount_cents, difference_cents, mode",
+        )
+        .in("transaction_id", paidTransactionIds);
+
+    if (reconciliationError) {
+      return {
+        error: reconciliationError.message,
+        invoices: [] as CreditCardInvoice[],
+      };
+    }
+
+    for (const reconciliation of (reconciliationData ??
+      []) as ReconciliationRow[]) {
+      reconciliationByTransactionId.set(
+        reconciliation.transaction_id,
+        reconciliation,
+      );
     }
   }
 
@@ -565,6 +603,7 @@ export async function getCreditCardInvoices() {
       open_cents: 0,
       paid_cents: 0,
       interest_cents: 0,
+      reconciliation: null,
       payment_transaction_id: null,
       status: "pending" as const,
       items: [],
@@ -617,15 +656,21 @@ export async function getCreditCardInvoices() {
       const paidCents = paymentTransactionId
         ? (paymentAmountById.get(paymentTransactionId) ?? invoice.paid_cents)
         : invoice.paid_cents;
+      const reconciliation = paymentTransactionId
+        ? (reconciliationByTransactionId.get(paymentTransactionId) ?? null)
+        : null;
 
       return {
         ...invoice,
         paid_cents: paidCents,
-        interest_cents: Math.max(0, paidCents - invoice.total_cents),
+        interest_cents: reconciliation
+          ? 0
+          : Math.max(0, paidCents - invoice.total_cents),
         items: invoice.items.sort((a, b) =>
           a.due_date.localeCompare(b.due_date),
         ),
         payment_transaction_id: paymentTransactionId,
+        reconciliation,
         status: invoiceStatus(invoice.items),
       };
     })

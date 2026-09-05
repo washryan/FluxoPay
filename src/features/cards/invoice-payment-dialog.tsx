@@ -5,6 +5,11 @@ import { createPortal } from "react-dom";
 
 import { SubmitButton } from "@/components/submit-button";
 import type { CreditCard, CreditCardInvoice } from "@/features/cards/data";
+import {
+  invoiceDifference,
+  parseInvoiceAmountToCents,
+  type InvoicePaymentMode,
+} from "@/features/cards/invoice-payment";
 import { formatCurrencyFromCents } from "@/lib/formatters";
 
 type InvoicePaymentDialogProps = {
@@ -42,8 +47,34 @@ export function InvoicePaymentDialog({
     "pix" | "debit_card" | "boleto" | "credit_card"
   >("pix");
   const [isInstallmentCredit, setIsInstallmentCredit] = useState(false);
+  const [creditInstallmentsCount, setCreditInstallmentsCount] = useState(1);
+  const [creditInstallmentAmount, setCreditInstallmentAmount] = useState(
+    formatAmountInput(invoice.open_cents),
+  );
   const [isInvoiceInstallment, setIsInvoiceInstallment] = useState(false);
+  const [paidAmount, setPaidAmount] = useState(
+    formatAmountInput(invoice.open_cents),
+  );
+  const [paymentMode, setPaymentMode] = useState<InvoicePaymentMode>("full");
   const otherCards = cards.filter((card) => card.id !== invoice.card_id);
+  const simpleEnteredCents = parseInvoiceAmountToCents(paidAmount);
+  const creditInstallmentCents = parseInvoiceAmountToCents(
+    creditInstallmentAmount,
+  );
+  const enteredCents =
+    paymentMethod === "credit_card" && isInstallmentCredit
+      ? creditInstallmentCents === null
+        ? null
+        : creditInstallmentsCount * creditInstallmentCents
+      : simpleEnteredCents;
+  const differenceCents =
+    enteredCents === null
+      ? 0
+      : invoiceDifference(invoice.open_cents, enteredCents);
+  const requiresIntent =
+    !isInvoiceInstallment &&
+    enteredCents !== null &&
+    differenceCents !== 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,6 +147,11 @@ export function InvoicePaymentDialog({
                 type="hidden"
                 value={isInvoiceInstallment ? "yes" : "no"}
               />
+              <input
+                name="payment_mode"
+                type="hidden"
+                value={requiresIntent ? paymentMode : "full"}
+              />
 
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 {isInvoiceInstallment
@@ -125,15 +161,16 @@ export function InvoicePaymentDialog({
                   className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   name="payment_method"
                   value={paymentMethod}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setPaymentMode("full");
                     setPaymentMethod(
                       event.target.value as
                         | "pix"
                         | "debit_card"
                         | "boleto"
                         | "credit_card",
-                    )
-                  }
+                    );
+                  }}
                 >
                   <option value="pix">Pix</option>
                   <option value="debit_card">Débito</option>
@@ -276,7 +313,11 @@ export function InvoicePaymentDialog({
                           inputMode="decimal"
                           name="paid_amount"
                           required
-                          defaultValue={formatAmountInput(invoice.open_cents)}
+                          value={paidAmount}
+                          onChange={(event) => {
+                            setPaidAmount(event.target.value);
+                            setPaymentMode("full");
+                          }}
                         />
                       </label>
                     </>
@@ -291,7 +332,13 @@ export function InvoicePaymentDialog({
                           name="credit_installments_count"
                           required
                           type="number"
-                          defaultValue={1}
+                          value={creditInstallmentsCount}
+                          onChange={(event) => {
+                            setCreditInstallmentsCount(
+                              Number(event.target.value),
+                            );
+                            setPaymentMode("full");
+                          }}
                         />
                       </label>
                       <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -301,7 +348,11 @@ export function InvoicePaymentDialog({
                           inputMode="decimal"
                           name="credit_installment_amount"
                           required
-                          defaultValue={formatAmountInput(invoice.open_cents)}
+                          value={creditInstallmentAmount}
+                          onChange={(event) => {
+                            setCreditInstallmentAmount(event.target.value);
+                            setPaymentMode("full");
+                          }}
                         />
                       </label>
                     </div>
@@ -315,10 +366,79 @@ export function InvoicePaymentDialog({
                     inputMode="decimal"
                     name="paid_amount"
                     required
-                    defaultValue={formatAmountInput(invoice.open_cents)}
+                    value={paidAmount}
+                    onChange={(event) => {
+                      setPaidAmount(event.target.value);
+                      setPaymentMode("full");
+                    }}
                   />
                 </label>
               )}
+
+              {requiresIntent ? (
+                <fieldset className="grid gap-3 rounded-3xl border border-amber-300 bg-amber-50 p-4">
+                  <legend className="px-1 text-sm font-semibold text-amber-950">
+                    Este valor é diferente do total calculado da fatura.
+                  </legend>
+                  <dl className="grid gap-2 text-sm sm:grid-cols-3">
+                    <div>
+                      <dt className="text-amber-800">Total calculado</dt>
+                      <dd className="font-semibold text-amber-950">
+                        {formatCurrencyFromCents(invoice.open_cents)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-amber-800">Valor informado</dt>
+                      <dd className="font-semibold text-amber-950">
+                        {formatCurrencyFromCents(enteredCents ?? 0)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-amber-800">Diferença</dt>
+                      <dd className="font-semibold text-amber-950">
+                        {formatCurrencyFromCents(differenceCents)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-white p-3 text-sm text-slate-700">
+                    <input
+                      checked={paymentMode === "partial"}
+                      className="mt-0.5 size-4 accent-amber-600"
+                      name="payment_intent_choice"
+                      onChange={() => setPaymentMode("partial")}
+                      required
+                      type="radio"
+                    />
+                    <span>
+                      <strong className="block text-slate-950">
+                        Registrar pagamento parcial
+                      </strong>
+                      O restante continua em aberto ou segue a opção de
+                      transferência abaixo.
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-white p-3 text-sm text-slate-700">
+                    <input
+                      checked={paymentMode === "reconciliation"}
+                      className="mt-0.5 size-4 accent-emerald-600"
+                      disabled={paymentMethod === "credit_card"}
+                      name="payment_intent_choice"
+                      onChange={() => setPaymentMode("reconciliation")}
+                      required
+                      type="radio"
+                    />
+                    <span>
+                      <strong className="block text-slate-950">
+                        Confirmar o valor real cobrado pelo banco
+                      </strong>
+                      Quita a fatura e registra o ajuste para auditoria.
+                      {paymentMethod === "credit_card"
+                        ? " Escolha Pix, débito ou boleto para reconciliar."
+                        : ""}
+                    </span>
+                  </label>
+                </fieldset>
+              ) : null}
 
               {!isInvoiceInstallment ? (
                 <div className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">

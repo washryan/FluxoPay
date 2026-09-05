@@ -7,7 +7,8 @@ export type Bill = {
   amount_cents: number;
   due_date: string;
   status: "pending" | "paid" | "overdue" | "cancelled";
-  recurrence: "none" | "weekly" | "monthly" | "yearly";
+  recurrence: "none" | "daily" | "weekly" | "monthly" | "yearly";
+  type: "income" | "expense" | null;
   category_id: string | null;
   notes: string | null;
   created_at: string;
@@ -46,7 +47,7 @@ export async function getBills() {
   const { data, error } = await supabase
     .from("bills")
     .select(
-      "id, name, amount_cents, due_date, status, recurrence, category_id, notes, created_at, categories(name, color)",
+      "id, name, amount_cents, due_date, status, recurrence, type, category_id, notes, created_at, categories(name, color)",
     )
     .order("due_date", { ascending: true })
     .order("created_at", { ascending: false });

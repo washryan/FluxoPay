@@ -1,5 +1,5 @@
 import type { Category } from "@/features/categories/data";
-import { billStatusLabels, recurrenceLabels } from "@/features/bills/constants";
+import { billTypeLabels, recurrenceLabels } from "@/features/bills/constants";
 import { SubmitButton } from "@/components/submit-button";
 
 type BillFormProps = {
@@ -15,7 +15,7 @@ export function BillForm({ action, categories }: BillFormProps) {
     >
       <h2 className="text-lg font-semibold">Nova conta</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Registre contas futuras a pagar ou receber.
+        Registre uma conta a pagar ou uma conta a receber.
       </p>
       <div className="mt-5 grid gap-4">
         <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -52,13 +52,14 @@ export function BillForm({ action, categories }: BillFormProps) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Status
+            Direção
             <select
               className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-              name="status"
-              defaultValue="pending"
+              name="type"
+              defaultValue="expense"
+              required
             >
-              {Object.entries(billStatusLabels).map(([value, label]) => (
+              {Object.entries(billTypeLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

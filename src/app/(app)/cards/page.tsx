@@ -659,7 +659,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
 
                       <div
                         className={`grid gap-3 border-t border-slate-200 p-4 ${
-                          invoice.interest_cents > 0 || transferredCents > 0
+                          invoice.interest_cents > 0 || transferredCents > 0 || invoice.reconciliation
                             ? "md:grid-cols-4"
                             : "md:grid-cols-3"
                         }`}
@@ -672,6 +672,16 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                             {formatCurrencyFromCents(invoice.total_cents)}
                           </p>
                         </div>
+                        {invoice.reconciliation ? (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                            <p className="text-xs font-semibold text-emerald-800">Reconciliação bancária</p>
+                            <p className="mt-1 text-xs text-emerald-900">
+                              Calculado: {formatCurrencyFromCents(invoice.reconciliation.calculated_amount_cents)}<br />
+                              Cobrado: {formatCurrencyFromCents(invoice.reconciliation.actual_paid_amount_cents)}<br />
+                              Ajuste: {formatCurrencyFromCents(invoice.reconciliation.difference_cents)}
+                            </p>
+                          </div>
+                        ) : null}
                         <div className="rounded-2xl bg-white p-3">
                           <p className="text-xs text-slate-500">Pago</p>
                           <p className="mt-1 font-semibold text-emerald-700">

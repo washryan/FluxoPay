@@ -19,6 +19,8 @@ import {
   SoftBadge,
   Surface,
 } from "@/components/app-ui";
+import { SubmitButton } from "@/components/submit-button";
+import { updateOpeningBalance } from "@/features/dashboard/actions";
 import { getDashboardData } from "@/features/dashboard/data";
 import { MonthlyChart } from "@/features/dashboard/monthly-chart";
 import { formatCurrencyFromCents, formatDate } from "@/lib/formatters";
@@ -28,6 +30,8 @@ type DashboardPageProps = {
   searchParams: Promise<{
     expenses?: string;
     trend?: string;
+    success?: string;
+    error?: string;
   }>;
 };
 
@@ -154,6 +158,18 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
+      {params.success ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {params.success}
+        </div>
+      ) : null}
+
+      {params.error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {params.error}
+        </div>
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           description="Transações lançadas desde o início até hoje."
@@ -200,6 +216,27 @@ export default async function DashboardPage({
           )}
         />
       </section>
+
+      <Surface
+        title="Saldo inicial"
+        description="Informe quanto já existia em caixa antes da primeira movimentação. Este valor não cria uma transação artificial."
+      >
+        <form action={updateOpeningBalance} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="grid flex-1 gap-2 text-sm font-medium text-slate-700">
+            Valor inicial
+            <input
+              className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+              defaultValue={(dashboard.financialPosition.openingBalanceCents / 100).toFixed(2).replace(".", ",")}
+              inputMode="decimal"
+              name="opening_balance"
+              required
+            />
+          </label>
+          <SubmitButton className="h-11 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800" pendingLabel="Salvando...">
+            Atualizar saldo inicial
+          </SubmitButton>
+        </form>
+      </Surface>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Surface

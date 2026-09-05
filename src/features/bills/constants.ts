@@ -7,9 +7,15 @@ export const billStatusLabels = {
 
 export const recurrenceLabels = {
   none: "Sem recorrência",
+  daily: "Diária",
   weekly: "Semanal",
   monthly: "Mensal",
   yearly: "Anual",
+};
+
+export const billTypeLabels = {
+  expense: "Conta a pagar",
+  income: "Conta a receber",
 };
 
 export const billStatusStyles = {
