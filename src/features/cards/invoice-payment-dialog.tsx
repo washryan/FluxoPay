@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { SubmitButton } from "@/components/submit-button";
@@ -43,6 +43,13 @@ export function InvoicePaymentDialog({
   returnState,
 }: InvoicePaymentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstControlRef = useRef<HTMLSelectElement>(null);
+  const isSubmittingRef = useRef(false);
+  const titleId = useId();
+  const descriptionId = useId();
   const [paymentMethod, setPaymentMethod] = useState<
     "pix" | "debit_card" | "boleto" | "credit_card"
   >("pix");
@@ -82,19 +89,85 @@ export function InvoicePaymentDialog({
     }
 
     const previousOverflow = document.body.style.overflow;
+    const trigger = triggerRef.current;
     document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => {
+      (firstControlRef.current ?? dialogRef.current)?.focus({
+        preventScroll: true,
+      });
+    });
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
+      trigger?.focus({ preventScroll: true });
     };
   }, [isOpen]);
+
+  function closeDialog() {
+    if (!isSubmittingRef.current) {
+      setIsOpen(false);
+    }
+  }
+
+  function handleDialogKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      if (!isSubmittingRef.current) {
+        event.preventDefault();
+        closeDialog();
+      }
+      return;
+    }
+
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const dialog = dialogRef.current;
+    if (!dialog) {
+      return;
+    }
+
+    const focusableElements = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((element) => element.getClientRects().length > 0);
+
+    if (focusableElements.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements.at(-1);
+    const activeElement = document.activeElement;
+
+    if (
+      event.shiftKey &&
+      (activeElement === firstElement || activeElement === dialog)
+    ) {
+      event.preventDefault();
+      lastElement?.focus();
+    } else if (!event.shiftKey && activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
 
   const dialog =
     isOpen && typeof document !== "undefined" ? (
       <div
+        aria-busy={isSubmitting}
+        aria-describedby={descriptionId}
+        aria-labelledby={titleId}
         aria-modal="true"
         className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
+        onKeyDown={handleDialogKeyDown}
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
       >
         <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl animate-rise flex-col overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-[0_24px_64px_rgb(15_23_42/0.18)] sm:max-h-[calc(100dvh-3rem)]">
           <div className="shrink-0 border-b border-slate-100 p-5">
@@ -103,10 +176,16 @@ export function InvoicePaymentDialog({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
                   Pagamento de fatura
                 </p>
-                <h3 className="mt-2 text-xl font-semibold text-slate-950">
+                <h3
+                  className="mt-2 text-xl font-semibold text-slate-950"
+                  id={titleId}
+                >
                   {invoice.card_name} · {invoice.invoice_month}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <p
+                  className="mt-1 text-sm text-slate-500"
+                  id={descriptionId}
+                >
                   Valor em aberto:{" "}
                   <strong className="text-slate-900">
                     {formatCurrencyFromCents(invoice.open_cents)}
@@ -115,15 +194,23 @@ export function InvoicePaymentDialog({
               </div>
               <button
                 className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                disabled={isSubmitting}
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={closeDialog}
               >
                 Fechar
               </button>
             </div>
           </div>
 
-          <form action={action} className="min-h-0 overflow-y-auto p-5">
+          <form
+            action={action}
+            className="min-h-0 overflow-y-auto p-5"
+            onSubmit={() => {
+              isSubmittingRef.current = true;
+              setIsSubmitting(true);
+            }}
+          >
             <div className="grid gap-4">
               <input name="cards_return_anchor" type="hidden" value="faturas" />
               <input
@@ -160,6 +247,7 @@ export function InvoicePaymentDialog({
                 <select
                   className="h-11 rounded-2xl border border-slate-200 px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                   name="payment_method"
+                  ref={firstControlRef}
                   value={paymentMethod}
                   onChange={(event) => {
                     setPaymentMode("full");
@@ -466,8 +554,9 @@ export function InvoicePaymentDialog({
               <div className="flex flex-wrap justify-end gap-2">
                 <button
                   className="h-11 rounded-2xl border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  disabled={isSubmitting}
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={closeDialog}
                 >
                   Cancelar
                 </button>
@@ -493,8 +582,13 @@ export function InvoicePaymentDialog({
     <>
       <button
         className="h-10 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          isSubmittingRef.current = false;
+          setIsSubmitting(false);
+          setIsOpen(true);
+        }}
       >
         Pagar fatura
       </button>
