@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { repository } from "./supabase";
 import { formatCurrencyFromCents, today } from "./utils";
 
 type TransactionRow = {
@@ -44,4 +45,12 @@ export async function getMonthlySummary(userId: string) {
     `Saídas: ${formatCurrencyFromCents(expense)}`,
     `Saldo: ${formatCurrencyFromCents(balance)}`,
   ].join("\n");
+}
+
+export async function getCurrentBalance(telegramUserId: number) {
+  try {
+    const balance = await repository.currentBalance(telegramUserId);
+    return balance === null ? "Não encontrei um vínculo ativo para consultar o saldo."
+      : `Saldo atual realizado: ${formatCurrencyFromCents(balance)}`;
+  } catch { return "Não consegui carregar seu saldo agora."; }
 }

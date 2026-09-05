@@ -1,23 +1,26 @@
 import { createHash } from "crypto";
 
-import { botConfig } from "./config";
-
 export function hashTelegramLinkToken(token: string) {
   return createHash("sha256").update(token.trim().toUpperCase()).digest("hex");
 }
 
-export function parseCurrencyToCents(value: string) {
+export function parseCurrencyToCents(value: string, maxAmountCents = 100_000_000_000) {
   const normalized = value
     .trim()
+    .replace(/^r\$\s*/i, "")
+    .replace(/\s*reais?$/i, "")
     .replace(/\s/g, "")
-    .replace(/\./g, "")
+    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
     .replace(",", ".");
 
   if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
     return null;
   }
 
-  return Math.round(Number(normalized) * 100);
+  const [whole, fraction = ""] = normalized.split(".");
+  const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  if (cents <= 0n || cents > BigInt(maxAmountCents) || cents > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  return Number(cents);
 }
 
 export function formatCurrencyFromCents(valueInCents: number) {
@@ -27,15 +30,15 @@ export function formatCurrencyFromCents(valueInCents: number) {
   }).format(valueInCents / 100);
 }
 
-export function today() {
-  return formatDateInTimezone(new Date());
+export function today(date = new Date(), timezone = process.env.BOT_TIMEZONE ?? "America/Sao_Paulo") {
+  return formatDateInTimezone(date, timezone);
 }
 
-export function formatDateInTimezone(date: Date) {
+export function formatDateInTimezone(date: Date, timezone = process.env.BOT_TIMEZONE ?? "America/Sao_Paulo") {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: botConfig.timezone,
+    timeZone: timezone,
     year: "numeric",
   }).formatToParts(date);
   const values = Object.fromEntries(

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { botConfig } from "./config";
+import { BotRepository } from "./repository";
 
 export const supabase = createClient(
   botConfig.supabaseUrl,
@@ -12,3 +13,5 @@ export const supabase = createClient(
     },
   },
 );
+
+export const repository = new BotRepository(supabase);

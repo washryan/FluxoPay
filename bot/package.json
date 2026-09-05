@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
+    "worker": "tsx src/worker.ts",
     "dev": "tsx watch src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "build": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0",

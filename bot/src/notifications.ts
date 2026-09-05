@@ -2,6 +2,10 @@ import type { Bot } from "grammy";
 
 import { botConfig } from "./config";
 import { supabase } from "./supabase";
+import { repository } from "./supabase";
+import { logger } from "./logger";
+import { classifyDeliveryFailure, notificationBackoffMs } from "./retry";
+import { runSequentialCycles } from "./scheduler";
 import {
   addDays,
   formatCurrencyFromCents,
@@ -116,9 +120,7 @@ async function getActiveNotificationLinks() {
     .not("telegram_chat_id", "is", null);
 
   if (error) {
-    console.error("Notification worker could not load telegram links", {
-      error: error.message,
-    });
+    logger.error("notification_links_load_failed", { error });
     return [] as NotificationLink[];
   }
 
@@ -141,47 +143,10 @@ async function getPreferences(userId: string) {
   return { ...defaultPreferences, ...data } as NotificationPreferences;
 }
 
-async function alreadySent(userId: string, notificationType: string, dedupeKey: string) {
-  const { data } = await supabase
-    .from("notification_logs")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("notification_type", notificationType)
-    .eq("dedupe_key", dedupeKey)
-    .eq("status", "sent")
-    .maybeSingle();
+let reservationOwnerId: string | null = null;
 
-  return Boolean(data);
-}
-
-async function logNotification({
-  errorMessage,
-  link,
-  notificationType,
-  dedupeKey,
-  referenceId,
-  referenceTable,
-  status,
-}: {
-  errorMessage?: string;
-  link: NotificationLink;
-  notificationType: string;
-  dedupeKey: string;
-  referenceId?: string;
-  referenceTable?: string;
-  status: "sent" | "failed";
-}) {
-  await supabase.from("notification_logs").insert({
-    user_id: link.user_id,
-    telegram_link_id: link.id,
-    notification_type: notificationType,
-    dedupe_key: dedupeKey,
-    channel: "telegram",
-    status,
-    reference_table: referenceTable ?? null,
-    reference_id: referenceId ?? null,
-    error_message: errorMessage?.slice(0, 500) ?? null,
-  });
+function retryAt(attempt: number) {
+  return new Date(Date.now() + notificationBackoffMs(attempt)).toISOString();
 }
 
 async function sendOnce({
@@ -204,31 +169,25 @@ async function sendOnce({
   if (!link.telegram_chat_id) {
     return;
   }
-
-  if (await alreadySent(link.user_id, notificationType, dedupeKey)) {
+  if (!reservationOwnerId) throw new Error("notification reservation owner is not configured");
+  const claim = await repository.reserveNotification({
+    userId: link.user_id, linkId: link.id, type: notificationType, dedupeKey,
+    ownerId: reservationOwnerId, reservationSeconds: botConfig.notificationReservationSeconds,
+    maxAttempts: botConfig.notificationMaxAttempts, referenceId, referenceTable,
+  });
+  if (!claim.claimed || !claim.claim_id) {
     return;
   }
 
   try {
     await bot.api.sendMessage(link.telegram_chat_id, message);
-    await logNotification({
-      dedupeKey,
-      link,
-      notificationType,
-      referenceId,
-      referenceTable,
-      status: "sent",
-    });
+    await repository.completeNotification({ claimId: claim.claim_id, ownerId: reservationOwnerId, outcome: "sent" });
   } catch (error) {
-    await logNotification({
-      dedupeKey,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      link,
-      notificationType,
-      referenceId,
-      referenceTable,
-      status: "failed",
-    });
+    const classification = classifyDeliveryFailure(error);
+    await repository.completeNotification({ claimId: claim.claim_id, ownerId: reservationOwnerId,
+      outcome: classification === "ambiguous" ? "ambiguous" : "failed",
+      error: classification, nextRetryAt: classification === "retryable" ? retryAt(claim.attempt ?? 1) : undefined });
+    logger.warn("notification_delivery_failed", { notificationType, classification, userId: link.user_id });
   }
 }
 
@@ -449,7 +408,8 @@ async function sendReports(
   }
 }
 
-export async function runNotificationWorker(bot: Bot) {
+export async function runNotificationWorker(bot: Bot, ownerId: string) {
+  reservationOwnerId = ownerId;
   const currentDate = today();
   await syncOverdueStatuses(currentDate);
 
@@ -468,17 +428,12 @@ export async function runNotificationWorker(bot: Bot) {
   }
 }
 
-export function startNotificationWorker(bot: Bot) {
-  const intervalMinutes = Number.isFinite(botConfig.reminderIntervalMinutes)
-    ? botConfig.reminderIntervalMinutes
-    : 1440;
-  const intervalMs = Math.max(intervalMinutes, 15) * 60 * 1000;
-
-  void runNotificationWorker(bot);
-
-  const timer = setInterval(() => {
-    void runNotificationWorker(bot);
-  }, intervalMs);
-
-  timer.unref();
+export async function runNotificationLoop(bot: Bot, ownerId: string, signal: AbortSignal) {
+  const intervalMs = botConfig.reminderIntervalMinutes * 60 * 1000;
+  await runSequentialCycles(async () => {
+    try { await runNotificationWorker(bot, ownerId); } catch (error) { logger.error("notification_cycle_failed", { error }); }
+  }, (currentSignal) => new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, intervalMs);
+      currentSignal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
+    }), signal);
 }

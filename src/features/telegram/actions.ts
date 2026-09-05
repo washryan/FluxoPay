@@ -13,7 +13,7 @@ export type TelegramTokenState = {
 };
 
 function generateLinkToken() {
-  return randomBytes(5).toString("hex").toUpperCase();
+  return randomBytes(16).toString("hex").toUpperCase();
 }
 
 function expiresAt() {
