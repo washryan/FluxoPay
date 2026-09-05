@@ -7,7 +7,6 @@ import {
   Landmark,
   ReceiptText,
   TrendingUp,
-  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -120,30 +119,40 @@ export default async function DashboardPage({
           </Link>
         }
       >
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
-              Entradas do mês
+        <div className="mt-8 grid gap-6 border-t border-white/10 pt-6 lg:grid-cols-[1.15fr_1fr] lg:items-end">
+          <div>
+            <p className="text-sm font-medium text-slate-300">Saldo atual</p>
+            <p
+              className="financial-value mt-2 text-4xl font-semibold text-white sm:text-5xl lg:text-6xl"
+              data-financial-value="true"
+            >
+              {formatCurrencyFromCents(
+                dashboard.financialPosition.realizedBalanceCents,
+              )}
             </p>
-            <p className="mt-2 text-2xl font-semibold">
-              {formatCurrencyFromCents(dashboard.currentMonth.incomeCents)}
-            </p>
-          </div>
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
-              Saídas do mês
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-red-100">
-              {formatCurrencyFromCents(dashboard.currentMonth.expenseCents)}
+            <p className="mt-3 max-w-lg text-sm text-slate-400">
+              Saldo inicial mais entradas e saídas já realizadas.
             </p>
           </div>
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
-              {monthlyResultLabel}
-            </p>
-            <p className="mt-2 text-2xl font-semibold">
-              {formatCurrencyFromCents(dashboard.currentMonth.balanceCents)}
-            </p>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
+            <div>
+              <p className="text-xs font-medium text-slate-400">Entradas no mês</p>
+              <p className="financial-value mt-1 text-lg font-semibold text-emerald-300">
+                {formatCurrencyFromCents(dashboard.currentMonth.incomeCents)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400">Saídas no mês</p>
+              <p className="financial-value mt-1 text-lg font-semibold text-rose-300">
+                {formatCurrencyFromCents(dashboard.currentMonth.expenseCents)}
+              </p>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-xs font-medium text-slate-400">{monthlyResultLabel}</p>
+              <p className="financial-value mt-1 text-lg font-semibold text-white">
+                {formatCurrencyFromCents(dashboard.currentMonth.balanceCents)}
+              </p>
+            </div>
           </div>
         </div>
       </PageHero>
@@ -170,20 +179,7 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          description="Transações lançadas desde o início até hoje."
-          icon={Wallet}
-          label="Saldo realizado"
-          tone={
-            dashboard.financialPosition.realizedBalanceCents >= 0
-              ? "slate"
-              : "red"
-          }
-          value={formatCurrencyFromCents(
-            dashboard.financialPosition.realizedBalanceCents,
-          )}
-        />
+      <section className="grid gap-4 md:grid-cols-3">
         <MetricCard
           description="Realizado menos cartões e contas ainda em aberto."
           icon={TrendingUp}
@@ -273,7 +269,7 @@ export default async function DashboardPage({
           description="Números para conferir o dia."
         >
           <div className="grid gap-3">
-            <div className="rounded-3xl bg-slate-950 p-4 text-white">
+            <div className="rounded-2xl bg-slate-950 p-4 text-white">
               <div className="flex items-center gap-2 text-sm text-slate-300">
                 <Landmark className="size-4" />
                 Compromissos em aberto
@@ -283,13 +279,13 @@ export default async function DashboardPage({
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-3xl bg-emerald-50 p-4">
+              <div className="rounded-2xl bg-emerald-50 p-4">
                 <p className="text-sm text-emerald-800">Entradas do mês</p>
                 <p className="mt-2 text-xl font-semibold text-emerald-800">
                   {formatCurrencyFromCents(dashboard.currentMonth.incomeCents)}
                 </p>
               </div>
-              <div className="rounded-3xl bg-red-50 p-4">
+              <div className="rounded-2xl bg-red-50 p-4">
                 <p className="text-sm text-red-800">Saídas do mês</p>
                 <p className="mt-2 text-xl font-semibold text-red-700">
                   {formatCurrencyFromCents(dashboard.currentMonth.expenseCents)}
@@ -337,7 +333,7 @@ export default async function DashboardPage({
             {dashboard.topExpenseCategories.length > 0 ? (
               dashboard.topExpenseCategories.map((category, index) => (
                 <div
-                  className="grid gap-3 rounded-3xl bg-slate-50/90 p-4 sm:grid-cols-[1fr_auto] sm:items-center"
+                  className="grid gap-3 rounded-2xl bg-slate-50/90 p-4 sm:grid-cols-[1fr_auto] sm:items-center"
                   key={category.id}
                 >
                   <div className="flex items-center gap-3">
@@ -382,7 +378,7 @@ export default async function DashboardPage({
               {dashboard.upcomingBills.length > 0 ? (
                 dashboard.upcomingBills.map((bill) => (
                   <div
-                    className="rounded-3xl border border-slate-100 bg-slate-50/90 p-4"
+                    className="rounded-2xl border border-slate-100 bg-slate-50/90 p-4"
                     key={bill.id}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -412,10 +408,10 @@ export default async function DashboardPage({
 
           <Surface title="Telegram" description="Cadastro rápido por conversa.">
             <div className="space-y-3 text-sm">
-              <p className="rounded-3xl bg-slate-50 p-4 text-slate-600">
+              <p className="rounded-2xl bg-slate-50 p-4 text-slate-600">
                 gastei 25 no mercado
               </p>
-              <p className="rounded-3xl bg-emerald-50 p-4 font-medium text-emerald-900">
+              <p className="rounded-2xl bg-emerald-50 p-4 font-medium text-emerald-900">
                 Entendi: saída de R$25,00 em Mercado. Confirmar?
               </p>
               <Link

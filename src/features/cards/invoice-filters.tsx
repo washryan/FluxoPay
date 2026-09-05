@@ -46,7 +46,7 @@ export function InvoiceFilters({
   return (
     <div
       aria-busy={isPending}
-      className="mt-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/90 p-3 lg:grid-cols-[1fr_auto] lg:items-center"
+      className="mt-5 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-3 lg:grid-cols-[1fr_auto] lg:items-center"
     >
       <div
         aria-label="Filtrar faturas por status"

@@ -13,11 +13,11 @@ type ConfirmButtonProps = {
 };
 
 const variantStyles = {
-  dark: "bg-slate-950 text-white hover:bg-slate-800",
-  danger: "border border-red-200 text-red-700 hover:bg-red-50",
+  dark: "bg-slate-900 text-white hover:bg-slate-800",
+  danger: "border border-red-200 bg-white text-red-700 hover:bg-red-50",
   emerald:
-    "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-  outline: "border border-slate-200 text-slate-700 hover:bg-slate-50",
+    "bg-emerald-700 text-white hover:bg-emerald-800",
+  outline: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
 };
 
 export function ConfirmButton({
@@ -32,7 +32,7 @@ export function ConfirmButton({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-4 focus:ring-slate-100 disabled:cursor-not-allowed disabled:opacity-70",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-70",
         variantStyles[variant],
         className,
       )}

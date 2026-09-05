@@ -29,7 +29,7 @@ export function CategoryEditForm({ action, category }: CategoryEditFormProps) {
       {isOpen ? (
         <form
           action={action}
-          className="mt-4 grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4"
+          className="mt-4 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
         >
           <input name="id" type="hidden" value={category.id} />
           <label className="grid gap-2 text-sm font-medium text-slate-700">

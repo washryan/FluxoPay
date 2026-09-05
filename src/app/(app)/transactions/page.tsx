@@ -154,7 +154,7 @@ export default async function TransactionsPage({
           id="historico"
         >
           <QueryFilterForm
-            className="mb-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/90 p-3 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
+            className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-3 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
             key={[params.start, params.end, params.type, params.category].join(":")}
           >
             <label className="grid gap-1 text-xs font-semibold text-slate-500">
@@ -208,7 +208,7 @@ export default async function TransactionsPage({
             </label>
           </QueryFilterForm>
 
-          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
             {transactionsResult.transactions.length > 0 ? (
               <div className="divide-y divide-slate-100">
                 {transactionsResult.transactions.map((transaction) => (
@@ -299,7 +299,7 @@ export default async function TransactionsPage({
             )}
           </div>
 
-          <div className="mt-4 flex items-center gap-2 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
+          <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
             <CalendarDays className="size-4 shrink-0 text-slate-400" />A data da
             transação define em qual mês ela aparece no dashboard e no
             relatório.

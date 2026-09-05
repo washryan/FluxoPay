@@ -30,7 +30,7 @@ export default async function EditTransactionPage({
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <header className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+        <header className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
           <Link
             className="text-sm font-semibold text-emerald-700 hover:text-emerald-800"
             href="/transactions"

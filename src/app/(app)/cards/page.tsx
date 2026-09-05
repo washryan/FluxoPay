@@ -177,7 +177,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
         variant="dark"
       >
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
+          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
               Em aberto
             </p>
@@ -185,7 +185,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               {formatCurrencyFromCents(totalOpenInvoicesCents)}
             </p>
           </div>
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
+          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
               Faturas atrasadas
             </p>
@@ -193,7 +193,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               {overdueInvoicesCount}
             </p>
           </div>
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
+          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
               Cartões ativos
             </p>
@@ -201,7 +201,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
               {cardsResult.cards.length}
             </p>
           </div>
-          <div className="rounded-3xl bg-white/10 p-4 ring-1 ring-white/15">
+          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/70">
               Limite disponível
             </p>
@@ -261,8 +261,8 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
                   <div
                     className={`rounded-[1.5rem] border border-slate-200 p-4 ${
                       preset
-                        ? `bg-gradient-to-br ${preset.gradient} text-white`
-                        : "bg-slate-950 text-white"
+                        ? `${preset.surface} text-white`
+                        : "bg-slate-800 text-white"
                     }`}
                     key={card.id}
                   >
@@ -471,7 +471,7 @@ export default async function CardsPage({ searchParams }: CardsPageProps) {
             {installmentsResult.installments.length > 0 ? (
               installmentsResult.installments.map((installment) => (
                 <div
-                  className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto_auto] md:items-center"
+                  className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto_auto] md:items-center"
                   key={installment.id}
                 >
                   <div>

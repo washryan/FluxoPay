@@ -47,7 +47,7 @@ export function TransactionForm({
       className={cn(
         "min-w-0 bg-white",
         !embedded &&
-          "rounded-[1.75rem] border border-slate-200 p-5 shadow-sm",
+          "rounded-[1.25rem] border border-slate-200 p-5 shadow-sm",
       )}
     >
       {returnState ? (

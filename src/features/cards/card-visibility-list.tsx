@@ -93,13 +93,13 @@ export function CardVisibilityList({ items }: CardVisibilityListProps) {
       </div>
 
       {visibleItems.length === 0 && items.length > 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-600">
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-600">
           Todos os cartões estão ocultos nesta tela.
         </p>
       ) : null}
 
       {hiddenItems.length > 0 ? (
-        <details className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-800">
             Outros cartões ({hiddenItems.length})
           </summary>

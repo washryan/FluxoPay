@@ -109,18 +109,18 @@ export function AuthForm({ mode, initialMessage }: AuthFormProps) {
     <form
       method="post"
       onSubmit={form.handleSubmit(onSubmit)}
-      className="grid gap-5 rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur md:p-8"
+      className="grid gap-5 rounded-[1.25rem] border border-slate-200 bg-white p-6 shadow-[var(--shadow-panel)] md:p-8"
     >
       <div className="space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">
+        <p className="text-sm font-bold tracking-[-0.01em] text-emerald-700">
           FluxoPay
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
+        <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
           {isSignup ? "Criar conta" : "Entrar na conta"}
         </h1>
         <p className="text-sm leading-6 text-slate-600">
           {isSignup
-            ? "Comece com um workspace financeiro privado e isolado por usuário."
+            ? "Crie seu espaço para organizar a vida financeira."
             : "Acesse seu painel para acompanhar entradas, saídas e próximos vencimentos."}
         </p>
       </div>
@@ -193,7 +193,7 @@ export function AuthForm({ mode, initialMessage }: AuthFormProps) {
       ) : null}
 
       <button
-        className="h-12 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-12 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
         type="submit"
         disabled={isPending}
       >

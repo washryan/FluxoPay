@@ -43,11 +43,11 @@ export function PresetCardPicker({
         className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
         role="dialog"
       >
-        <div className="max-h-[calc(100dvh-1.5rem)] w-full max-w-xl animate-rise overflow-y-auto rounded-[2rem] border border-white/50 bg-white p-5 shadow-2xl shadow-slate-950/25 md:p-6">
+        <div className="max-h-[calc(100dvh-1.5rem)] w-full max-w-xl animate-rise overflow-y-auto rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-[0_24px_64px_rgb(15_23_42/0.18)] md:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <div
-                className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br ${selectedPreset.gradient} text-sm font-black text-white shadow-lg`}
+                className={`grid size-12 place-items-center rounded-xl ${selectedPreset.surface} text-sm font-bold text-white`}
               >
                 {selectedPreset.shortName}
               </div>
@@ -167,7 +167,7 @@ export function PresetCardPicker({
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cardPresets.map((card) => (
           <article
-            className={`interactive-card card-sheen animate-rise rounded-[1.75rem] bg-gradient-to-br ${card.gradient} p-5 text-white shadow-xl shadow-slate-950/10`}
+            className={`interactive-card animate-rise rounded-[1.25rem] ${card.surface} p-5 text-white shadow-sm`}
             key={card.name}
           >
             <div className="relative z-10 flex min-h-44 flex-col justify-between">

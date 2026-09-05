@@ -105,7 +105,7 @@ function ObligationList({
   }
 
   return (
-    <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-100 bg-white">
+    <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white">
       {items.map((item) => (
         <div
           className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_150px_128px] md:items-center"
@@ -259,17 +259,6 @@ export default async function VencimentosPage() {
 
       <section className="grid gap-5 xl:grid-cols-2">
         <Surface
-          description={`${obligations.groups.creditPending.length} parcela(s) de cartão ainda em aberto.`}
-          title="Crédito pendente"
-        >
-          <ObligationList
-            emptyDescription="Quando houver compras ou parcelas futuras no cartão, elas aparecerão aqui."
-            emptyTitle="Nenhum crédito pendente"
-            items={obligations.groups.creditPending}
-          />
-        </Surface>
-
-        <Surface
           description={`${obligations.groups.creditOverdue.length} parcela(s) de cartão vencida(s).`}
           title="Crédito atrasado"
         >
@@ -281,17 +270,6 @@ export default async function VencimentosPage() {
         </Surface>
 
         <Surface
-          description={`${obligations.groups.billPending.length} conta(s) ainda pendente(s).`}
-          title="Contas pendentes"
-        >
-          <ObligationList
-            emptyDescription="Cadastre contas futuras para o calendário financeiro ficar completo."
-            emptyTitle="Nenhuma conta pendente"
-            items={obligations.groups.billPending}
-          />
-        </Surface>
-
-        <Surface
           description={`${obligations.groups.billOverdue.length} conta(s) vencida(s).`}
           title="Contas atrasadas"
         >
@@ -299,6 +277,28 @@ export default async function VencimentosPage() {
             emptyDescription="Contas vencidas e não pagas aparecerão aqui."
             emptyTitle="Nenhuma conta atrasada"
             items={obligations.groups.billOverdue}
+          />
+        </Surface>
+
+        <Surface
+          description={`${obligations.groups.creditPending.length} parcela(s) de cartão ainda em aberto.`}
+          title="Crédito pendente"
+        >
+          <ObligationList
+            emptyDescription="Quando houver compras ou parcelas futuras no cartão, elas aparecerão aqui."
+            emptyTitle="Nenhum crédito pendente"
+            items={obligations.groups.creditPending}
+          />
+        </Surface>
+
+        <Surface
+          description={`${obligations.groups.billPending.length} conta(s) ainda pendente(s).`}
+          title="Contas pendentes"
+        >
+          <ObligationList
+            emptyDescription="Cadastre contas futuras para o calendário financeiro ficar completo."
+            emptyTitle="Nenhuma conta pendente"
+            items={obligations.groups.billPending}
           />
         </Surface>
       </section>

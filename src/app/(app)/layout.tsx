@@ -1,30 +1,10 @@
+import { LogOut, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  BarChart3,
-  Bot,
-  CalendarClock,
-  CreditCard,
-  FolderKanban,
-  LayoutDashboard,
-  ListChecks,
-  ReceiptText,
-  Tags,
-} from "lucide-react";
 
+import { AppNavigation } from "@/components/app-navigation";
 import { signOut } from "@/features/auth/actions";
 import { createClient } from "@/lib/supabase/server";
-
-const navigation = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/resumo", icon: BarChart3, label: "Resumo" },
-  { href: "/vencimentos", icon: CalendarClock, label: "Vencimentos" },
-  { href: "/transactions", icon: ListChecks, label: "Transações" },
-  { href: "/categories", icon: Tags, label: "Categorias" },
-  { href: "/bills", icon: ReceiptText, label: "Contas" },
-  { href: "/cards", icon: CreditCard, label: "Cartões" },
-  { href: "/settings/telegram", icon: Bot, label: "Telegram" },
-];
 
 export default async function AppLayout({
   children,
@@ -55,74 +35,50 @@ export default async function AppLayout({
     "Usuário";
 
   return (
-    <div className="min-h-screen bg-[#050914] text-slate-100">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1680px] flex-col lg:flex-row">
-        <aside className="shrink-0 border-b border-white/10 bg-[#050914]/95 p-4 backdrop-blur lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r lg:p-5">
+    <div className="fluxopay-app min-h-screen bg-[#f4f6f5] text-slate-950">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col lg:flex-row">
+        <aside className="sticky top-0 z-40 shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:flex lg:w-64 lg:flex-col lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
           <div className="flex items-center justify-between gap-4">
             <Link href="/dashboard" className="group flex items-center gap-3">
-              <span className="grid size-12 place-items-center rounded-[1.35rem] bg-[linear-gradient(135deg,#052e2b,#10b981_52%,#d9f99d)] text-lg font-black text-white shadow-lg shadow-emerald-950/40 ring-1 ring-white/15 transition group-hover:scale-105">
-                F
+              <span className="grid size-10 place-items-center rounded-xl bg-[#143d30] text-white shadow-sm transition group-hover:bg-[#0f6148]">
+                <WalletCards className="size-5" />
               </span>
               <span>
-                <span className="block text-sm font-black uppercase tracking-[0.26em] text-emerald-300">
+                <span className="block text-sm font-bold tracking-[-0.01em] text-slate-950">
                   FluxoPay
                 </span>
-                <span className="mt-1 block text-xs text-slate-400">
-                  Controle financeiro real
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  Finanças pessoais
                 </span>
               </span>
             </Link>
             <form action={signOut} className="lg:hidden">
-              <button className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
-                Sair
+              <button aria-label="Sair" className="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
+                <LogOut className="size-4" />
               </button>
             </form>
           </div>
 
-          <div className="mt-5 hidden rounded-[1.5rem] border border-emerald-300/15 bg-emerald-300/[0.06] p-4 text-sm text-emerald-50 lg:block">
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-2xl bg-emerald-300/15 text-emerald-200">
-                <FolderKanban className="size-4" />
-              </span>
-              <div>
-                <p className="font-semibold">Seu espaço financeiro</p>
-                <p className="text-xs text-emerald-100/65">
-                  Organização e lembretes em um só lugar
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
-            {navigation.map((item) => (
-              <Link
-                className="group inline-flex min-h-11 items-center gap-3 whitespace-nowrap rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-                href={item.href}
-                key={item.href}
-              >
-                <item.icon className="size-4 text-slate-500 transition group-hover:text-emerald-300" />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <AppNavigation />
 
           <div className="mt-auto hidden pt-6 lg:block">
-            <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div className="border-t border-slate-200 pt-5">
+              <p className="text-xs font-medium text-slate-500">
                 Logado como
               </p>
-              <p className="mt-2 text-sm font-semibold text-white">
+              <p className="mt-1 truncate text-sm font-semibold text-slate-900">
                 {displayName}
               </p>
               <form action={signOut} className="mt-4">
-                <button className="w-full rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-emerald-100">
+                <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <LogOut className="size-4" />
                   Sair
                 </button>
               </form>
             </div>
           </div>
         </aside>
-        <main className="app-orb relative min-w-0 flex-1 overflow-x-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#edf4f7_45%,#eaf2ee_100%)] text-slate-950 lg:rounded-l-[2.5rem]">
+        <main className="relative min-w-0 flex-1 overflow-x-hidden bg-[#f4f6f5] text-slate-950">
           <div className="relative z-10">{children}</div>
         </main>
       </div>

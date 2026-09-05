@@ -204,7 +204,7 @@ export default async function CategoriesPage({
           description={`${result.categories.length} categorias cadastradas para classificar entradas, saídas e relatórios.`}
           title="Suas categorias"
         >
-          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
             {result.categories.length > 0 ? (
               <div className="divide-y divide-slate-100">
                 {primaryCategories.map(renderCategory)}

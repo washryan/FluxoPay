@@ -25,7 +25,7 @@ export function TelegramLinkCard({ botUsername }: TelegramLinkCardProps) {
       : null;
 
   return (
-    <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">
         Vínculo seguro
       </p>
@@ -53,7 +53,7 @@ export function TelegramLinkCard({ botUsername }: TelegramLinkCardProps) {
       ) : null}
 
       {command ? (
-        <div className="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
           <p className="text-sm font-semibold text-emerald-900">
             Envie este comando para o bot:
           </p>

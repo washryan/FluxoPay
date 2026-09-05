@@ -90,7 +90,7 @@ export function AuthCallbackClient() {
   }, [router, searchParams]);
 
   return (
-    <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-2xl shadow-slate-900/10">
+    <div className="w-full max-w-md rounded-[1.25rem] border border-slate-200 bg-white p-8 text-center shadow-[var(--shadow-panel)]">
       <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">
         FluxoPay
       </p>

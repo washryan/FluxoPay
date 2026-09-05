@@ -141,12 +141,18 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
           description="Acompanhe status, recorrência e vencimento sem precisar abrir cada item."
           title="Lista de contas"
         >
-          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
             {billsResult.bills.length > 0 ? (
               <div className="divide-y divide-slate-100">
                 {billsResult.bills.map((bill) => (
                   <div
-                    className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_145px_132px_220px] xl:items-center"
+                    className={`grid gap-4 border-l-2 p-4 xl:grid-cols-[minmax(0,1fr)_145px_132px_220px] xl:items-center ${
+                      bill.type === "income"
+                        ? "border-l-emerald-500"
+                        : bill.type === "expense"
+                          ? "border-l-rose-400"
+                          : "border-l-amber-400"
+                    }`}
                     key={bill.id}
                   >
                     <div className="min-w-0">
@@ -169,7 +175,14 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
                         {formatDate(bill.due_date)}
                       </p>
                     </div>
-                    <p className="font-semibold text-slate-950">
+                    <p
+                      className={`financial-value font-semibold ${
+                        bill.type === "income"
+                          ? "text-emerald-700"
+                          : "text-slate-950"
+                      }`}
+                    >
+                      {bill.type === "income" ? "+ " : ""}
                       {formatCurrencyFromCents(bill.amount_cents)}
                     </p>
                     <SoftBadge
@@ -248,7 +261,7 @@ export default async function BillsPage({ searchParams }: BillsPageProps) {
             )}
           </div>
 
-          <div className="mt-4 flex items-start gap-2 rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <div className="mt-4 flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
             Contas pendentes e atrasadas entram no saldo projetado do dashboard.
           </div>

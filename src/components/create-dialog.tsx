@@ -52,7 +52,7 @@ export function CreateDialog({
     <>
       <button
         className={cn(
-          "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200",
+          "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200",
           triggerClassName,
         )}
         onClick={openDialog}
@@ -65,7 +65,7 @@ export function CreateDialog({
       <dialog
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
-        className="m-auto max-h-[calc(100dvh-2rem)] w-[min(44rem,calc(100%-2rem))] overflow-hidden rounded-[1.75rem] bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/60"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[min(44rem,calc(100%-2rem))] overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white p-0 text-slate-950 shadow-[0_24px_64px_rgb(15_23_42/0.18)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-[2px]"
         onClick={(event) => {
           if (event.target === event.currentTarget) closeDialog();
         }}

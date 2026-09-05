@@ -1,5 +1,6 @@
 import { MessageCircle, ShieldCheck } from "lucide-react";
 
+import { EmptyState, PageFrame, PageHero, Surface } from "@/components/app-ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { revokeTelegramLink } from "@/features/telegram/actions";
 import { getTelegramLinks } from "@/features/telegram/data";
@@ -35,20 +36,13 @@ export default async function TelegramSettingsPage({
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="animate-rise rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">
-            Telegram
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-            Conecte sua conta ao bot.
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-            Use o Telegram para registrar movimentações, consultar saldo e
-            receber avisos importantes sem abrir o painel.
-          </p>
-        </header>
+    <PageFrame>
+        <PageHero
+          description="Use o Telegram para registrar movimentações, consultar saldo e receber avisos importantes sem abrir o painel."
+          eyebrow="Telegram"
+          title="Conecte sua conta ao bot."
+          variant="dark"
+        />
 
         {params.success ? (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -65,22 +59,16 @@ export default async function TelegramSettingsPage({
         <section className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
           <TelegramLinkCard botUsername={botUsername} />
 
-          <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Vínculos recentes</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Gerencie os dispositivos autorizados a conversar com o bot.
-                </p>
-              </div>
-              <ShieldCheck className="size-5 text-emerald-600" />
-            </div>
-
-            <div className="mt-5 grid gap-3">
+          <Surface
+            action={<ShieldCheck className="size-5 text-emerald-700" />}
+            description="Gerencie os dispositivos autorizados a conversar com o bot."
+            title="Vínculos recentes"
+          >
+            <div className="grid gap-3">
               {linksResult.links.length > 0 ? (
                 linksResult.links.map((link) => (
                   <div
-                    className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"
+                    className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto]"
                     key={link.id}
                   >
                     <div>
@@ -126,16 +114,18 @@ export default async function TelegramSettingsPage({
                   </div>
                 ))
               ) : (
-                <div className="grid min-h-52 place-items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                  Nenhum vínculo criado ainda.
-                </div>
+                <EmptyState
+                  description="Crie um vínculo para registrar movimentações pelo chat."
+                  icon={MessageCircle}
+                  title="Nenhum vínculo criado"
+                />
               )}
             </div>
-          </article>
+          </Surface>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2">
-          <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="interactive-card rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-[var(--shadow-panel)]">
             <MessageCircle className="size-5 text-emerald-600" />
             <h2 className="mt-4 font-semibold text-slate-950">
               Registre pelo chat
@@ -145,7 +135,7 @@ export default async function TelegramSettingsPage({
               confirme antes de salvar no FluxoPay.
             </p>
           </article>
-          <article className="interactive-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="interactive-card rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-[var(--shadow-panel)]">
             <ShieldCheck className="size-5 text-emerald-600" />
             <h2 className="mt-4 font-semibold text-slate-950">
               Você mantém o controle
@@ -156,7 +146,6 @@ export default async function TelegramSettingsPage({
             </p>
           </article>
         </section>
-      </div>
-    </div>
+    </PageFrame>
   );
 }

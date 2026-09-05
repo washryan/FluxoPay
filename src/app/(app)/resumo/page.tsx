@@ -151,7 +151,7 @@ export default async function SummaryPage({ searchParams }: SummaryPageProps) {
             {report.invoices.length > 0 ? (
               report.invoices.map((invoice) => (
                 <div
-                  className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto] md:items-center"
+                  className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_auto] md:items-center"
                   key={invoice.key}
                 >
                   <div>

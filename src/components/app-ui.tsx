@@ -9,8 +9,8 @@ type PageFrameProps = {
 
 export function PageFrame({ children, className }: PageFrameProps) {
   return (
-    <div className={cn("min-h-screen px-4 py-5 sm:px-6 lg:px-8", className)}>
-      <div className="mx-auto w-full max-w-7xl space-y-6">{children}</div>
+    <div className={cn("min-h-screen px-4 py-6 sm:px-6 lg:px-10 lg:py-9", className)}>
+      <div className="mx-auto w-full max-w-[88rem] space-y-6 lg:space-y-7">{children}</div>
     </div>
   );
 }
@@ -37,29 +37,29 @@ export function PageHero({
   return (
     <header
       className={cn(
-        "animate-rise overflow-hidden rounded-[2rem] border p-5 shadow-sm sm:p-7 lg:p-8",
+        "animate-rise overflow-hidden rounded-[1.5rem] border p-5 sm:p-7 lg:p-8",
         isDark
-          ? "card-sheen border-emerald-300/20 bg-[radial-gradient(circle_at_top_left,#34d399_0,#0f766e_26%,#07111f_68%)] text-white shadow-emerald-950/20"
-          : "border-white/80 bg-white/90 text-slate-950 shadow-slate-200/70 backdrop-blur",
+          ? "border-[#20382f] bg-[#10231c] text-white shadow-[0_12px_32px_rgb(15_35_28/0.12)]"
+          : "border-slate-200 bg-white text-slate-950 shadow-[var(--shadow-panel)]",
       )}
     >
       <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl">
           <p
             className={cn(
-              "text-xs font-black uppercase tracking-[0.28em]",
-              isDark ? "text-emerald-200" : "text-emerald-700",
+              "text-xs font-bold uppercase tracking-[0.18em]",
+              isDark ? "text-emerald-300" : "text-emerald-700",
             )}
           >
             {eyebrow}
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl lg:text-5xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl lg:text-[2.75rem] lg:leading-[1.08]">
             {title}
           </h1>
           <p
             className={cn(
               "mt-4 max-w-2xl text-sm leading-6 sm:text-base",
-              isDark ? "text-emerald-50/85" : "text-slate-600",
+              isDark ? "text-slate-300" : "text-slate-600",
             )}
           >
             {description}
@@ -93,7 +93,7 @@ export function Surface({
     <section
       id={id}
       className={cn(
-        "animate-rise rounded-[1.75rem] border border-white/75 bg-white/90 p-5 shadow-sm shadow-slate-200/70 backdrop-blur",
+        "animate-rise rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-[var(--shadow-panel)] sm:p-6",
         className,
       )}
     >
@@ -101,7 +101,7 @@ export function Surface({
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             {title ? (
-              <h2 className="text-lg font-semibold tracking-tight text-slate-950">
+              <h2 className="text-base font-semibold tracking-[-0.015em] text-slate-950 sm:text-lg">
                 {title}
               </h2>
             ) : null}
@@ -160,16 +160,16 @@ export function MetricCard({
   const classes = metricTones[tone];
 
   return (
-    <article className="interactive-card animate-rise rounded-[1.65rem] border border-white/80 bg-white/90 p-5 shadow-sm shadow-slate-200/70 backdrop-blur">
+    <article className="interactive-card animate-rise rounded-[1.1rem] border border-slate-200 bg-white p-5 shadow-[var(--shadow-panel)]">
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm font-semibold text-slate-500">{label}</p>
-        <span className={cn("rounded-2xl p-2 ring-1", classes.accent)}>
+        <span className={cn("rounded-xl p-2 ring-1", classes.accent)}>
           <Icon className="size-5" />
         </span>
       </div>
       <p
         className={cn(
-          "mt-4 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl",
+          "financial-value mt-4 text-2xl font-semibold sm:text-3xl",
           classes.value,
         )}
       >
@@ -194,10 +194,10 @@ export function EmptyState({
   title,
 }: EmptyStateProps) {
   return (
-    <div className="grid min-h-44 place-items-center rounded-3xl border border-dashed border-slate-200/90 bg-slate-50/80 p-6 text-center">
+    <div className="grid min-h-40 place-items-center rounded-[1rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
       <div className="max-w-sm">
         {Icon ? (
-          <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-white text-slate-500 shadow-sm">
+          <span className="mx-auto grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500">
             <Icon className="size-5" />
           </span>
         ) : null}
@@ -218,7 +218,7 @@ export function SoftBadge({ children, className }: SoftBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
         className,
       )}
     >

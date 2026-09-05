@@ -26,7 +26,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
 
   if (!hasData) {
     return (
-      <div className="mt-6 grid h-64 place-items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 text-center text-sm text-slate-500">
+      <div className="mt-6 grid h-64 place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center text-sm text-slate-500">
         <div>
           <p className="font-medium text-slate-700">Sem movimentações ainda</p>
           <p className="mt-1">O gráfico aparece quando houver transações.</p>

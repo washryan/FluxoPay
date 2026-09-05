@@ -96,7 +96,7 @@ export function InvoicePaymentDialog({
         className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
         role="dialog"
       >
-        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl animate-rise flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-2xl shadow-slate-950/25 sm:max-h-[calc(100dvh-3rem)]">
+        <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl animate-rise flex-col overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-[0_24px_64px_rgb(15_23_42/0.18)] sm:max-h-[calc(100dvh-3rem)]">
           <div className="shrink-0 border-b border-slate-100 p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -181,7 +181,7 @@ export function InvoicePaymentDialog({
                 </select>
               </label>
 
-              <label className="flex items-start justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+              <label className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
                 <span>
                   <span className="block font-semibold text-slate-900">
                     Parcelamento de fatura
@@ -218,7 +218,7 @@ export function InvoicePaymentDialog({
               </label>
 
               {isInvoiceInstallment ? (
-                <div className="grid gap-4 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="grid gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <label className="grid gap-2 text-sm font-medium text-emerald-950">
                     Entrada
                     <input
@@ -261,7 +261,7 @@ export function InvoicePaymentDialog({
                   </p>
                 </div>
               ) : paymentMethod === "credit_card" ? (
-                <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
                     Qual cartão pagou esta fatura?
                     <select
@@ -376,7 +376,7 @@ export function InvoicePaymentDialog({
               )}
 
               {requiresIntent ? (
-                <fieldset className="grid gap-3 rounded-3xl border border-amber-300 bg-amber-50 p-4">
+                <fieldset className="grid gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
                   <legend className="px-1 text-sm font-semibold text-amber-950">
                     Este valor é diferente do total calculado da fatura.
                   </legend>

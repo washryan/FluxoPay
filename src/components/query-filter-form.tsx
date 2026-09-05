@@ -41,7 +41,7 @@ export function QueryFilterForm({
     <form className={className} onSubmit={handleSubmit}>
       {children}
       <button
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70 sm:col-span-2 xl:col-span-1 xl:self-end"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70 sm:col-span-2 xl:col-span-1 xl:self-end"
         disabled={isPending}
       >
         {isPending ? pendingLabel : "Filtrar"}
