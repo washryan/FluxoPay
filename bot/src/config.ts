@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 
-config({ path: ".env.bot" });
+config({ path: ".env.bot", quiet: true });
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -33,6 +33,7 @@ export const botConfig = {
   leaseHeartbeatSeconds: integerEnv("BOT_LEASE_HEARTBEAT_SECONDS", 20, 5, 1200),
   notificationMaxAttempts: integerEnv("NOTIFICATION_MAX_ATTEMPTS", 3, 1, 20),
   notificationReservationSeconds: integerEnv("NOTIFICATION_RESERVATION_SECONDS", 120, 15, 3600),
+  workerEnabled: process.env.WORKER_ENABLED === "true",
 };
 
 if (botConfig.leaseHeartbeatSeconds * 2 >= botConfig.leaseTtlSeconds) {

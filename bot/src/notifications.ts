@@ -428,10 +428,16 @@ export async function runNotificationWorker(bot: Bot, ownerId: string) {
   }
 }
 
-export async function runNotificationLoop(bot: Bot, ownerId: string, signal: AbortSignal) {
+export async function runNotificationLoop(bot: Bot, ownerId: string, signal: AbortSignal, callbacks: {
+  onCycleStart?: () => void | Promise<void>;
+  onCycleSuccess?: () => void | Promise<void>;
+  onCycleError?: (error: unknown) => void | Promise<void>;
+} = {}) {
   const intervalMs = botConfig.reminderIntervalMinutes * 60 * 1000;
   await runSequentialCycles(async () => {
-    try { await runNotificationWorker(bot, ownerId); } catch (error) { logger.error("notification_cycle_failed", { error }); }
+    await callbacks.onCycleStart?.();
+    try { await runNotificationWorker(bot, ownerId); await callbacks.onCycleSuccess?.(); }
+    catch (error) { logger.error("notification_cycle_failed", { error }); await callbacks.onCycleError?.(error); }
   }, (currentSignal) => new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, intervalMs);
       currentSignal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });

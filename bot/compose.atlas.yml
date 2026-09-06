@@ -1,0 +1,50 @@
+name: fluxopay-runtime
+
+x-runtime: &runtime
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: fluxopay-bot:2.0
+  restart: unless-stopped
+  read_only: true
+  init: true
+  cap_drop: ["ALL"]
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+  networks:
+    - outbound
+  stop_grace_period: 30s
+
+services:
+  bot:
+    <<: *runtime
+    container_name: fluxopay-bot
+    env_file: /data/atlas/secrets/fluxopay/bot.env
+    environment:
+      PROCESS_ROLE: bot
+    healthcheck:
+      test: ["CMD", "node", "dist/healthcheck.js"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *runtime
+    container_name: fluxopay-worker
+    command: ["node", "dist/worker.js"]
+    env_file: /data/atlas/secrets/fluxopay/worker.env
+    environment:
+      PROCESS_ROLE: worker
+    healthcheck:
+      test: ["CMD", "node", "dist/healthcheck.js"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+networks:
+  outbound:
+    driver: bridge

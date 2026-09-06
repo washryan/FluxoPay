@@ -16,6 +16,8 @@ export class ProcessLease {
   constructor(private readonly repository: LeaseRepository, readonly key: string,
     private readonly ttlSeconds: number, private readonly heartbeatSeconds: number) {}
 
+  get isHeld() { return this.held; }
+
   async acquire(metadata: object = {}) {
     this.held = await this.repository.acquireLease(this.key, this.ownerId, this.ttlSeconds, metadata);
     if (this.held) this.lastSuccessfulHeartbeat = Date.now();

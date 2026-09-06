@@ -32,10 +32,11 @@ export function createFluxoPayBot(token = botConfig.telegramBotToken) {
     const tokenValue = ctx.match?.trim();
     await ctx.reply(tokenValue ? (await linkTelegramAccount(ctx, tokenValue)).message : "Envie: /vincular SEU_TOKEN");
   });
-  bot.command("ajuda", async (ctx) => ctx.reply(["Você pode me enviar:", "“gastei 35 no pix com almoço”",
-    "“recebi 500 hoje”", "“qual é meu saldo?”", "“resumo do mês”", "", "Eu sempre peço confirmação antes de salvar."].join("\n")));
-  bot.command("saldo", async (ctx) => { const link = await linked(ctx); if (link) await ctx.reply(await getCurrentBalance(link.telegram_user_id)); });
-  bot.command("resumo", async (ctx) => { const link = await linked(ctx); if (link) await ctx.reply(await getMonthlySummary(link.user_id)); });
+  bot.command("ajuda", async (ctx) => { logger.info("bot_command", { command: "help", userId: ctx.from?.id }); return ctx.reply(["Você pode me enviar:", "“gastei 35 no pix com almoço”",
+    "“recebi 500 hoje”", "“qual é meu saldo?”", "“resumo do mês”", "", "Eu sempre peço confirmação antes de salvar."].join("\n"));
+  });
+  bot.command("saldo", async (ctx) => { logger.info("bot_command", { command: "balance", userId: ctx.from?.id }); const link = await linked(ctx); if (link) await ctx.reply(await getCurrentBalance(link.telegram_user_id)); });
+  bot.command("resumo", async (ctx) => { logger.info("bot_command", { command: "summary", userId: ctx.from?.id }); const link = await linked(ctx); if (link) await ctx.reply(await getMonthlySummary(link.user_id)); });
 
   bot.callbackQuery(/^(confirm|edit|cancel):([0-9a-f-]{36})$/, async (ctx) => {
     const link = await linked(ctx); if (!link) return;
@@ -58,6 +59,7 @@ export function createFluxoPayBot(token = botConfig.telegramBotToken) {
     let categories;
     try { categories = await repository.listCategories(link.user_id); } catch { await ctx.reply("Não consegui consultar suas categorias agora."); return; }
     const intent = parseBotIntent(text, { categories, maxAmountCents: botConfig.maxAmountCents, timezone: botConfig.timezone });
+    logger.info("bot_intent", { intent: intent.type, userId: link.user_id });
     if (intent.type === "QUERY_BALANCE") { await ctx.reply(await getCurrentBalance(link.telegram_user_id)); return; }
     if (intent.type === "QUERY_SUMMARY") { await ctx.reply(await getMonthlySummary(link.user_id)); return; }
     if (intent.type !== "CREATE_TRANSACTION") {
