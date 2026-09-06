@@ -4,6 +4,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { getCallbackDestination } from "@/features/auth/callback-destination";
 import { createClient } from "@/lib/supabase/browser";
 
 function getHashParams() {
@@ -14,7 +15,11 @@ function getHashParams() {
   return new URLSearchParams(window.location.hash.replace(/^#/, ""));
 }
 
-export function AuthCallbackClient() {
+type AuthCallbackClientProps = {
+  recovery?: boolean;
+};
+
+export function AuthCallbackClient({ recovery = false }: AuthCallbackClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [message, setMessage] = useState("Confirmando sua conta...");
@@ -24,11 +29,15 @@ export function AuthCallbackClient() {
 
     async function confirmAuth() {
       const supabase = createClient();
-      const next = searchParams.get("next") ?? "/dashboard";
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
-      const type = searchParams.get("type");
       const hashParams = getHashParams();
+      const type = searchParams.get("type") ?? hashParams.get("type");
+      const next = getCallbackDestination(
+        type,
+        searchParams.get("next"),
+        recovery,
+      );
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
 
@@ -87,7 +96,7 @@ export function AuthCallbackClient() {
     return () => {
       isMounted = false;
     };
-  }, [router, searchParams]);
+  }, [recovery, router, searchParams]);
 
   return (
     <div className="w-full max-w-md rounded-[1.25rem] border border-slate-200 bg-white p-8 text-center shadow-[var(--shadow-panel)]">

@@ -1,0 +1,47 @@
+name: fluxopay-edge
+
+services:
+  tunnel:
+    container_name: ryanleal-atlas-tunnel
+    image: cloudflare/cloudflared:2026.7.3@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf
+    env_file:
+      - ${CLOUDFLARE_TUNNEL_ENV_FILE:-/data/atlas/secrets/fluxopay/cloudflare-tunnel.env}
+    command:
+      - tunnel
+      - --metrics
+      - 0.0.0.0:20241
+      - run
+    networks:
+      - fluxopay-edge
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,uid=65532,gid=65532
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "cloudflared",
+          "tunnel",
+          "--metrics",
+          "localhost:20241",
+          "ready",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  fluxopay-edge:
+    external: true
+    name: fluxopay-edge

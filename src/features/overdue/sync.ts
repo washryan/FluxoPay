@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isReadOnlyStaging } from "@/lib/staging";
 
 function todayInSaoPaulo() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -15,6 +16,10 @@ function todayInSaoPaulo() {
 }
 
 export async function syncOverdueStatuses() {
+  if (isReadOnlyStaging()) {
+    return null;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

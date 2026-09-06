@@ -154,7 +154,17 @@ export function AuthForm({ mode, initialMessage }: AuthFormProps) {
       </label>
 
       <label className="grid gap-2 text-sm font-medium text-slate-800">
-        Senha
+        <span className="flex items-center justify-between gap-4">
+          Senha
+          {!isSignup ? (
+            <Link
+              className="font-semibold text-emerald-700 hover:text-emerald-800"
+              href="/forgot-password"
+            >
+              Esqueci minha senha
+            </Link>
+          ) : null}
+        </span>
         <input
           className="h-11 rounded-2xl border border-slate-200 bg-white px-4 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
           placeholder="Mínimo de 8 caracteres"

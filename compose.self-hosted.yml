@@ -54,4 +54,4 @@ networks:
     name: fluxopay-internal
   fluxopay-edge:
     external: true
-    name: supabase_default
+    name: fluxopay-edge

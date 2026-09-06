@@ -1,10 +1,26 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isReadOnlyStaging } from "@/lib/staging";
+
 import { getOptionalSupabaseConfig } from "./config";
 import { getSupabaseServerFetch } from "./server-config";
 
 export async function updateSession(request: NextRequest) {
+  if (
+    isReadOnlyStaging() &&
+    request.method === "POST" &&
+    request.headers.has("next-action")
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Ambiente em preparação — alterações temporariamente desativadas.",
+      },
+      { status: 423 },
+    );
+  }
+
   let response = NextResponse.next({
     request,
   });

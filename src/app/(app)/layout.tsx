@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNavigation } from "@/components/app-navigation";
-import { signOut } from "@/features/auth/actions";
+import { isReadOnlyStaging } from "@/lib/staging";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
@@ -33,9 +33,18 @@ export default async function AppLayout({
       : null) ||
     user.email?.split("@")[0] ||
     "Usuário";
+  const readOnly = isReadOnlyStaging();
 
   return (
-    <div className="fluxopay-app min-h-screen bg-[#f4f6f5] text-slate-950">
+    <div
+      className="fluxopay-app min-h-screen bg-[#f4f6f5] text-slate-950"
+      data-read-only={readOnly || undefined}
+    >
+      {readOnly ? (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-medium text-amber-900">
+          Ambiente em preparação — alterações temporariamente desativadas.
+        </div>
+      ) : null}
       <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col lg:flex-row">
         <aside className="sticky top-0 z-40 shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:flex lg:w-64 lg:flex-col lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
           <div className="flex items-center justify-between gap-4">
@@ -52,7 +61,7 @@ export default async function AppLayout({
                 </span>
               </span>
             </Link>
-            <form action={signOut} className="lg:hidden">
+            <form action="/auth/signout" method="post" className="lg:hidden">
               <button aria-label="Sair" className="grid size-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900">
                 <LogOut className="size-4" />
               </button>
@@ -69,7 +78,7 @@ export default async function AppLayout({
               <p className="mt-1 truncate text-sm font-semibold text-slate-900">
                 {displayName}
               </p>
-              <form action={signOut} className="mt-4">
+              <form action="/auth/signout" method="post" className="mt-4">
                 <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                   <LogOut className="size-4" />
                   Sair

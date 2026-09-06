@@ -7,6 +7,8 @@ and Vercel remain the rollback path until the final cutover is authorized.
 
 - Web: `http://192.168.1.202:3110`
 - Supabase API/Auth: `http://192.168.1.202:54331`
+- Public web: `https://fluxopay.ryanleal.com.br`
+- Public Supabase API/Auth: `https://fluxopay-api.ryanleal.com.br`
 - PostgreSQL, Studio, and postgres-meta are Docker-internal only.
 - Operational secrets live under `/data/atlas/secrets/fluxopay/` with mode 600.
 - Persistent application state lives under `/data/atlas/apps/fluxopay/`.
@@ -74,8 +76,83 @@ Encrypted files prepared for future off-machine transfer belong in:
 No external destination is configured yet. A tested off-machine copy remains a
 cutover blocker.
 
+## Cloudflare Tunnel
+
+The remotely managed `ryanleal-atlas` tunnel runs from the pinned compose file
+without publishing host ports:
+
+```bash
+docker compose -f compose.cloudflare.yml up -d
+docker inspect ryanleal-atlas-tunnel --format '{{json .State.Health}}'
+docker logs --tail 100 ryanleal-atlas-tunnel
+docker compose -f compose.cloudflare.yml restart tunnel
+```
+
+Its token lives only in
+`/data/atlas/secrets/fluxopay/cloudflare-tunnel.env` (mode 600). Public hostname
+routes are managed remotely in Cloudflare:
+
+- `fluxopay.ryanleal.com.br` -> `http://fluxopay-web:3000`
+- `fluxopay-api.ryanleal.com.br` -> `http://fluxopay-api-gw:8000`
+
+The connector shares only the dedicated `fluxopay-edge` network with the web
+and gateway services. It does not join `fluxopay-internal`, cannot address
+PostgreSQL directly, and publishes no inbound port.
+
+Cloudflare rules required before cutover:
+
+- `FluxoPay private bypass`: bypass cache for both FluxoPay public hostnames.
+- `FluxoPay staging read-only`: block public `POST`, `PUT`, `PATCH`, and
+  `DELETE` requests under `fluxopay-api.ryanleal.com.br/rest/v1/`.
+- A hostname-scoped 308 redirect upgrades HTTP to HTTPS while preserving the
+  path, query string, and request method.
+
+The Cloudflare Free rate-limit interface available during staging only offered
+a 10-second counting period and 10-second mitigation timeout. No rule was
+deployed with improvised values. GoTrue retains its internal email and token
+limits; stronger edge rate limiting remains a cutover hardening item.
+
+The persistent Supabase stack must always be operated with both its base file
+and the ATLAS override. Omitting the override selects the wrong data mount and
+network topology:
+
+```bash
+docker compose \
+  --env-file /data/atlas/secrets/fluxopay/self-hosted.env \
+  -f /data/atlas/apps/fluxopay/compose/docker-compose.yml \
+  -f /data/atlas/apps/fluxopay/config/docker-compose.atlas.yml \
+  ps
+```
+
+Before the final data synchronization, keep `FLUXOPAY_READ_ONLY=true` in the
+web runtime env. The proxy rejects every Next.js Server Action with HTTP 423,
+the automatic overdue-status synchronization is disabled, and the dedicated
+`/auth/signout` route keeps logout functional. Public `/rest/v1` write methods
+must also be blocked by the temporary Cloudflare staging rule. Removing these
+guards in F3.4 requires an explicit env/rule change and web container
+recreation.
+
 ## SMTP
 
-SMTP is intentionally not configured. Signup confirmation, password recovery,
-and email changes are not production-ready until a domain and SMTP provider are
-configured.
+GoTrue sends transactional Auth email through Resend using the verified
+`mail.ryanleal.com.br` sending subdomain. Credentials live only in:
+
+```text
+/data/atlas/secrets/fluxopay/smtp.env
+```
+
+The operational self-hosted env receives the corresponding SMTP variables; do
+not put them in Git, images, logs, or shell examples. Auth has outbound access
+through its egress network but publishes no port.
+
+Password recovery uses a custom GoTrue template served internally by the web
+container. Email links first open `/auth/recovery/confirm` and require an
+explicit user click before `verifyOtp` consumes the one-time token. This avoids
+email-security scanners invalidating the token during link prefetch. The flow
+then opens `/reset-password`; it has been validated through HTTPS with the
+self-hosted user.
+
+The Cloudflare DNS records for SMTP must remain DNS-only and exactly match the
+values issued by Resend. Rotate the Resend credential by updating `smtp.env`,
+merging the protected operational env, and recreating only `fluxopay-auth` with
+`--no-deps`.
