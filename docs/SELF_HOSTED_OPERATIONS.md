@@ -3,6 +3,47 @@
 This staging installation is not the production source of truth. Supabase Cloud
 and Vercel remain the rollback path until the final cutover is authorized.
 
+## Project status — PAUSED AFTER F3.3
+
+- Status: **PAUSED AFTER F3.3**.
+- F3.3 completion commit: `1d51c9e6e70fd5eefd6cb16e0945e40af5f58beb`.
+- Integration branch: `integration/self-hosted`.
+- The self-hosted installation remains a read-only staging environment, not the
+  production source of truth.
+- Resume only with explicit authorization to begin F3.4.
+- No cutover has been performed. Supabase Cloud and Vercel remain active as the
+  production system and rollback path.
+- Keep both staging write protections enabled: the application-level
+  `FLUXOPAY_READ_ONLY=true` guard and the Cloudflare staging read-only WAF rule.
+- Keep the Telegram bot and notification worker disconnected from real runtime
+  operation until separately authorized.
+
+### F3.4 blockers and resume checklist
+
+1. Select an off-machine destination for encrypted backups, implement the
+   transfer, and prove a restore from that copy.
+2. Define the final synchronization procedure and maintenance/read-only window
+   for the current Cloud/Vercel production environment.
+3. Create and verify fresh encrypted backups immediately before synchronization.
+4. Export production data read-only and preserve Auth users, identities,
+   password hashes, UUIDs, ownership, timestamps, and financial relationships.
+5. Compare Cloud and ATLAS counts, financial checksums, foreign-key integrity,
+   Auth users, and identities after the final synchronization.
+6. Re-run migrations as applicable, pgTAP, application tests, bot tests, builds,
+   and authenticated route checks against the synchronized ATLAS database.
+7. Prove login and read-only financial views before enabling any write path.
+8. Obtain explicit authorization before removing both staging write guards;
+   their removal must be coordinated only after the data comparison passes.
+9. Define cutover acceptance criteria, rollback triggers, and rollback window;
+   preserve Supabase Cloud and Vercel until that window closes.
+10. Authorize and validate the real Telegram bot and worker separately after the
+    backend cutover, including their leases and notification safety controls.
+11. Revisit public Auth rate limiting. The available Cloudflare Free rule only
+    supports a 10-second period and duration, so no unsuitable rule was enabled;
+    GoTrue's internal limits remain the current protection.
+12. SMTP recovery is configured and validated, but should be rechecked after the
+    final URL/configuration freeze and before production acceptance.
+
 ## Runtime
 
 - Web: `http://192.168.1.202:3110`
